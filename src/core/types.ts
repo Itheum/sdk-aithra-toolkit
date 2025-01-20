@@ -76,13 +76,22 @@ export interface ICreditManager {
   handlePayment(numberOfFiles: number): Promise<string>;
 }
 
-export interface IFileManagerParams {
+export interface IStorageManagerParams {
   files: File | File[];
   category: 'files' | 'staticdata' | ManifestType;
   paymentHash: string;
   address: string;
 }
 
-export interface IFileManager {
-  upload(params: IFileManagerParams): Promise<UploadedFile[]>;
+export interface IpnsResponse {
+  key: string;
+  hash: string;
+  address: string;
+  pointingHash: string;
+  lastUpdated: number;
+}
+
+export interface IStorageManager {
+  upload(params: IStorageManagerParams): Promise<UploadedFile[]>;
+  pinToIpns(cid: string, address: string): Promise<IpnsResponse>;
 }
