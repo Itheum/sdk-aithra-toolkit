@@ -21,7 +21,12 @@ export class ItheumManager {
 
   constructor(connection: Connection, keypair: Keypair, apiUrl: string) {
     this.wallet = new Wallet(keypair);
-    this.creditManager = new CreditManager(connection, this.wallet, apiUrl);
+    this.creditManager = new CreditManager(
+      connection,
+      this.wallet,
+      apiUrl,
+      500000
+    );
     this.storageManager = new StorageManager(`http://${apiUrl}`);
 
     logger.info(
@@ -41,7 +46,7 @@ export class ItheumManager {
       logger.info(`Processing ${fileArray.length} music files for upload`);
 
       // 1. Handle payment
-      const paymentSignature = await this.creditManager.handlePayment(
+      let paymentSignature = await this.creditManager.handlePayment(
         fileArray.length
       );
       logger.info(`Payment processed with signature: ${paymentSignature}`);
@@ -73,6 +78,8 @@ export class ItheumManager {
       const manifestFile = new File([manifestBlob], 'playlist-manifest.json', {
         type: 'application/json'
       });
+
+      paymentSignature = await this.creditManager.handlePayment(1);
 
       // 5. Upload manifest
       const manifestUpload = await this.storageManager.upload({

@@ -31,12 +31,19 @@ export class CreditManager implements ICreditManager {
     'ETRT3kRcn5k4yigqj7Q2j9Zvi7vkKhwD4tzw8H3GPJuc'
   );
   private readonly apiUrl: string;
+  private readonly priorityFee: number;
 
-  constructor(connection: Connection, wallet: Wallet, apiUrl: string) {
+  constructor(
+    connection: Connection,
+    wallet: Wallet,
+    apiUrl: string,
+    priorityFee: number
+  ) {
     this.connection = connection;
     this.wallet = wallet;
     this.balance = 0;
     this.apiUrl = apiUrl;
+    this.priorityFee = priorityFee;
   }
 
   async fetchBalance(): Promise<number> {
@@ -158,16 +165,14 @@ export class CreditManager implements ICreditManager {
       this.wallet.publicKey
     );
 
-    const toTokenAccount = await getOrCreateAssociatedTokenAccount(
-      this.connection,
-      this.wallet.payer,
+    const toTokenAccount = getAssociatedTokenAddressSync(
       this.ITHEUM_MINT,
       this.BURNER_WALLET
     );
 
     const transferInstruction = createTransferInstruction(
       fromTokenAccount,
-      toTokenAccount.address,
+      toTokenAccount,
       this.wallet.publicKey,
       amount * Math.pow(10, 9)
     );
@@ -176,7 +181,7 @@ export class CreditManager implements ICreditManager {
       connection: this.connection,
       wallet: this.wallet,
       instructions: [transferInstruction],
-      priorityFee: 50000
+      priorityFee: this.priorityFee
     });
   }
 
@@ -199,8 +204,8 @@ export class CreditManager implements ICreditManager {
       const paymentSignature = await this.sendTokensToBurner(
         creditReq.requiredAmount
       );
-      itheumAgentLogger.success(
-        `Credits sent to burner wallet. https://solscan.io/tx/${paymentSignature}`
+      itheumAgentLogger.log(
+        `Payment sent. https://solscan.io/tx/${paymentSignature}`
       );
 
       return paymentSignature;
