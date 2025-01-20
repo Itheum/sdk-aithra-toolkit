@@ -1,43 +1,39 @@
-export interface BaseManifest {
-  data_stream: {
-    category: string;
-    name: string;
-    creator: string;
-    created_on: string;
-    last_modified_on: string;
-    marshalManifest: {
-      totalItems: number;
-      nestedStream: boolean;
-    };
-  };
-  data: unknown[];
-}
-
-export interface MusicPlaylistConfig {
+export interface DataStream {
+  category: string;
   name: string;
   creator: string;
-  filesMetadata?: Record<string, FileMetadata>;
-  defaultMetadata?: {
-    artist: string;
-    album: string;
+  created_on: string;
+  last_modified_on: string;
+  marshalManifest: {
+    totalItems: number;
+    nestedStream: boolean;
   };
 }
+
+// Base manifest interface
+export interface BaseManifest<T = unknown> {
+  data_stream: DataStream;
+  data: T[];
+}
+
+export interface MusicTrackData {
+  idx: number;
+  date: string;
+  category: string;
+  artist: string;
+  album: string;
+  src: string;
+  cover_art_url: string;
+  title: string;
+}
+
+export interface MusicPlaylistManifest extends BaseManifest<MusicTrackData> {}
 
 export interface FileMetadata {
   artist: string;
   album: string;
-}
-
-export interface MusicPlaylistManifest extends BaseManifest {
-  data: Array<{
-    idx: number;
-    date: string;
-    category: string;
-    artist: string;
-    album: string;
-    cover_art_url: string;
-    title: string;
-  }>;
+  title: string;
+  category: string;
 }
 
 export type UploadedFile = {
@@ -47,6 +43,23 @@ export type UploadedFile = {
   folderHash: string;
   category: string;
 };
+
+export interface MusicPlaylistConfig {
+  name: string;
+  creator: string;
+  filesMetadata: Record<string, FileMetadata>;
+  fileNames: Record<
+    string,
+    {
+      audioFileName: string;
+      coverArtFileName: string;
+    }
+  >;
+  defaultMetadata?: {
+    album: string;
+    category: string;
+  };
+}
 
 export enum ManifestType {
   MusicPlaylist = 'musicplaylist'
@@ -60,6 +73,13 @@ export interface IManifestBuilder {
   ): Promise<BaseManifest>;
 }
 
+export interface IManifestBuilder {
+  buildManifest(
+    type: ManifestType,
+    uploadedFiles: UploadedFile[],
+    config: any
+  ): Promise<BaseManifest>;
+}
 export interface Logger {
   closeByNewLine?: boolean;
   useIcons?: boolean;
