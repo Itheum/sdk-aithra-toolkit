@@ -58,9 +58,28 @@ export async function signSendAndConfirmTransaction({
       {}
     );
 
-    await connection.confirmTransaction(signature, 'confirmed');
+    const MAX_RETRIES = 4;
+    let currentTry = 0;
 
-    return signature;
+    // wait 3 seconds
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    while (currentTry < MAX_RETRIES) {
+      try {
+        const status = await connection.getSignatureStatus(signature);
+        if (status.value.confirmationStatus === 'finalized' || 'confirmed') {
+          return signature;
+        } else {
+          throw new Error('Transaction failed to confirm');
+        }
+      } catch (confirmError) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        currentTry++;
+        if (currentTry === MAX_RETRIES) {
+          throw confirmError;
+        }
+      }
+    }
   } catch (error) {
     itheumAgentLogger.error(` Transaction failed`, error);
     throw Error('Transaction failed');

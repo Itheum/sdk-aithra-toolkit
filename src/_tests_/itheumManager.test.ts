@@ -47,7 +47,9 @@ describe('ItheumManager', () => {
 
     const mockConfig = {
       name: 'Test Playlist',
-      creator: 'test-creator'
+      creator: 'test-creator',
+      filesMetadata: {},
+      fileNames: {}
     };
 
     it('should coordinate the upload process successfully', async () => {

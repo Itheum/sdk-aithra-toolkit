@@ -71,10 +71,9 @@ describe('StorageManager', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             'payment-hash': mockUploadParams.paymentHash,
-            address: mockUploadParams.address
-          }),
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity
+            address: mockUploadParams.address,
+            'content-type': 'multipart/form-data'
+          })
         })
       );
 

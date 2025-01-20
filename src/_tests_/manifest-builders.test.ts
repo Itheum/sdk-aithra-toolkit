@@ -31,7 +31,6 @@ describe('MusicPlaylistBuilder', () => {
 
   beforeEach(() => {
     builder = new MusicPlaylistBuilder();
-    // Mock the date to ensure consistent testing
     mockDate = '2024-01-18T12:00:00.000Z';
     jest.useFakeTimers();
     jest.setSystemTime(new Date(mockDate));
@@ -50,9 +49,23 @@ describe('MusicPlaylistBuilder', () => {
       category: ManifestType.MusicPlaylist
     },
     {
-      hash: 'Qm987654321',
+      hash: 'Qm234567890',
+      fileName: 'cosmic_spark_cover.jpeg',
+      mimeType: 'image/jpeg',
+      folderHash: 'Qm987654321',
+      category: ManifestType.MusicPlaylist
+    },
+    {
+      hash: 'Qm345678901',
       fileName: 'stellar_dance.mp3',
       mimeType: 'audio/mpeg',
+      folderHash: 'Qm987654321',
+      category: ManifestType.MusicPlaylist
+    },
+    {
+      hash: 'Qm456789012',
+      fileName: 'stellar_dance_cover.jpeg',
+      mimeType: 'image/jpeg',
       folderHash: 'Qm987654321',
       category: ManifestType.MusicPlaylist
     }
@@ -60,89 +73,107 @@ describe('MusicPlaylistBuilder', () => {
 
   const baseConfig: MusicPlaylistConfig = {
     name: 'Galaxy',
-    creator: 'Ben'
+    creator: 'Ben',
+    filesMetadata: {
+      cosmic_spark: {
+        artist: 'Gravity Pulse',
+        album: 'Suno',
+        title: 'Cosmic Spark',
+        category: 'Electro pop'
+      },
+      stellar_dance: {
+        artist: 'Star Beats',
+        album: 'Suno',
+        title: 'Stellar Dance',
+        category: 'Electro pop'
+      }
+    },
+    fileNames: {
+      cosmic_spark: {
+        audioFileName: 'cosmic_spark.mp3',
+        coverArtFileName: 'cosmic_spark_cover.jpeg'
+      },
+      stellar_dance: {
+        audioFileName: 'stellar_dance.mp3',
+        coverArtFileName: 'stellar_dance_cover.jpeg'
+      }
+    }
   };
 
-  it('should build basic manifest without metadata', async () => {
+  it('should build manifest with complete metadata and files', async () => {
     const manifest = (await builder.buildManifest(
       ManifestType.MusicPlaylist,
       mockFiles,
       baseConfig
     )) as MusicPlaylistManifest;
 
-    expect(manifest).toEqual({
-      data_stream: {
-        category: ManifestType.MusicPlaylist,
-        name: 'Galaxy',
-        creator: 'Ben',
-        created_on: '2024-01-18',
-        last_modified_on: '2024-01-18',
-        marshalManifest: {
-          totalItems: 2,
-          nestedStream: true
+    expect(manifest.data_stream).toEqual({
+      category: ManifestType.MusicPlaylist,
+      name: 'Galaxy',
+      creator: 'Ben',
+      created_on: '2024-01-18',
+      last_modified_on: '2024-01-18',
+      marshalManifest: {
+        totalItems: 2,
+        nestedStream: true
+      }
+    });
+
+    expect(manifest.data).toEqual([
+      {
+        idx: 1,
+        date: mockDate,
+        category: 'Electro pop',
+        artist: 'Gravity Pulse',
+        album: 'Suno',
+        src: `https://gateway.lighthouse.storage/ipfs/Qm123456789`,
+        cover_art_url: `https://gateway.lighthouse.storage/ipfs/Qm234567890`,
+        title: 'Cosmic Spark'
+      },
+      {
+        idx: 2,
+        date: mockDate,
+        category: 'Electro pop',
+        artist: 'Star Beats',
+        album: 'Suno',
+        src: `https://gateway.lighthouse.storage/ipfs/Qm345678901`,
+        cover_art_url: `https://gateway.lighthouse.storage/ipfs/Qm456789012`,
+        title: 'Stellar Dance'
+      }
+    ]);
+  });
+
+  it('should use default metadata when file-specific metadata fields are missing', async () => {
+    const configWithDefaults: MusicPlaylistConfig = {
+      name: 'Galaxy',
+      creator: 'Ben',
+      filesMetadata: {
+        cosmic_spark: {
+          artist: 'Gravity Pulse',
+          title: 'Cosmic Spark',
+          album: '', // Missing album
+          category: '' // Missing category
+        },
+        stellar_dance: {
+          artist: 'Star Beats',
+          title: 'Stellar Dance',
+          album: '', // Missing album
+          category: '' // Missing category
         }
       },
-      data: [
-        {
-          idx: 1,
-          date: mockDate,
-          category: ManifestType.MusicPlaylist,
-          artist: 'Unknown',
-          album: 'Unknown',
-          cover_art_url: `https://gateway.lighthouse.storage/ipfs/${mockFiles[0].hash}`,
-          title: 'cosmic_spark.mp3'
+      fileNames: {
+        cosmic_spark: {
+          audioFileName: 'cosmic_spark.mp3',
+          coverArtFileName: 'cosmic_spark_cover.jpeg'
         },
-        {
-          idx: 2,
-          date: mockDate,
-          category: ManifestType.MusicPlaylist,
-          artist: 'Unknown',
-          album: 'Unknown',
-          cover_art_url: `https://gateway.lighthouse.storage/ipfs/${mockFiles[1].hash}`,
-          title: 'stellar_dance.mp3'
+        stellar_dance: {
+          audioFileName: 'stellar_dance.mp3',
+          coverArtFileName: 'stellar_dance_cover.jpeg'
         }
-      ]
-    });
-  });
-
-  it('should build manifest with file-specific metadata', async () => {
-    const configWithMetadata: MusicPlaylistConfig = {
-      ...baseConfig,
-      filesMetadata: {
-        'cosmic_spark.mp3': {
-          artist: 'Gravity Pulse',
-          album: 'Suno'
-        }
-      }
-    };
-
-    const manifest = (await builder.buildManifest(
-      ManifestType.MusicPlaylist,
-      mockFiles,
-      configWithMetadata
-    )) as MusicPlaylistManifest;
-
-    expect(manifest.data[0]).toEqual({
-      idx: 1,
-      date: mockDate,
-      category: ManifestType.MusicPlaylist,
-      artist: 'Gravity Pulse',
-      album: 'Suno',
-      cover_art_url: `https://gateway.lighthouse.storage/ipfs/${mockFiles[0].hash}`,
-      title: 'cosmic_spark.mp3'
-    });
-
-    // Second file should still have default values
-    expect(manifest.data[1].artist).toBe('Unknown');
-    expect(manifest.data[1].album).toBe('Unknown');
-  });
-
-  it('should build manifest with default metadata', async () => {
-    const configWithDefaults: MusicPlaylistConfig = {
-      ...baseConfig,
+      },
       defaultMetadata: {
-        artist: 'Default Artist',
-        album: 'Default Album'
+        album: 'Default Album',
+        category: 'Default Category'
       }
     };
 
@@ -152,79 +183,55 @@ describe('MusicPlaylistBuilder', () => {
       configWithDefaults
     )) as MusicPlaylistManifest;
 
-    // Both files should have default metadata
-    manifest.data.forEach((item) => {
-      expect(item.artist).toBe('Default Artist');
-      expect(item.album).toBe('Default Album');
-    });
+    expect(manifest.data[0].album).toBe('Default Album');
+    expect(manifest.data[0].category).toBe('Default Category');
+    expect(manifest.data[1].album).toBe('Default Album');
+    expect(manifest.data[1].category).toBe('Default Category');
   });
 
-  it('should prioritize file-specific metadata over default metadata', async () => {
-    const configWithBoth: MusicPlaylistConfig = {
-      ...baseConfig,
-      defaultMetadata: {
-        artist: 'Default Artist',
-        album: 'Default Album'
-      },
-      filesMetadata: {
-        'cosmic_spark.mp3': {
-          artist: 'Gravity Pulse',
-          album: 'Suno'
-        }
-      }
+  it('should throw error when audio file is missing', async () => {
+    const incompleteFiles = mockFiles.filter(
+      (file) => !file.fileName.includes('cosmic_spark.mp3')
+    );
+
+    await expect(async () => {
+      await builder.buildManifest(
+        ManifestType.MusicPlaylist,
+        incompleteFiles,
+        baseConfig
+      );
+    }).rejects.toThrow('Audio file not found: cosmic_spark.mp3');
+  });
+
+  it('should throw error when cover art file is missing', async () => {
+    const incompleteFiles = mockFiles.filter(
+      (file) => !file.fileName.includes('cosmic_spark_cover.jpeg')
+    );
+
+    await expect(async () => {
+      await builder.buildManifest(
+        ManifestType.MusicPlaylist,
+        incompleteFiles,
+        baseConfig
+      );
+    }).rejects.toThrow('Cover art file not found: cosmic_spark_cover.jpeg');
+  });
+
+  it('should handle empty metadata object', async () => {
+    const emptyConfig: MusicPlaylistConfig = {
+      name: 'Galaxy',
+      creator: 'Ben',
+      filesMetadata: {},
+      fileNames: {}
     };
 
     const manifest = (await builder.buildManifest(
       ManifestType.MusicPlaylist,
       mockFiles,
-      configWithBoth
-    )) as MusicPlaylistManifest;
-
-    // First file should have specific metadata
-    expect(manifest.data[0]).toEqual({
-      idx: 1,
-      date: mockDate,
-      category: ManifestType.MusicPlaylist,
-      artist: 'Gravity Pulse',
-      album: 'Suno',
-      cover_art_url: `https://gateway.lighthouse.storage/ipfs/${mockFiles[0].hash}`,
-      title: 'cosmic_spark.mp3'
-    });
-
-    // Second file should have default metadata
-    expect(manifest.data[1]).toEqual({
-      idx: 2,
-      date: mockDate,
-      category: ManifestType.MusicPlaylist,
-      artist: 'Default Artist',
-      album: 'Default Album',
-      cover_art_url: `https://gateway.lighthouse.storage/ipfs/${mockFiles[1].hash}`,
-      title: 'stellar_dance.mp3'
-    });
-  });
-
-  it('should handle empty files array', async () => {
-    const manifest = (await builder.buildManifest(
-      ManifestType.MusicPlaylist,
-      [],
-      baseConfig
+      emptyConfig
     )) as MusicPlaylistManifest;
 
     expect(manifest.data_stream.marshalManifest.totalItems).toBe(0);
     expect(manifest.data).toEqual([]);
-  });
-
-  it('should generate correct cover art URLs', async () => {
-    const manifest = (await builder.buildManifest(
-      ManifestType.MusicPlaylist,
-      mockFiles,
-      baseConfig
-    )) as MusicPlaylistManifest;
-
-    manifest.data.forEach((item, index) => {
-      expect(item.cover_art_url).toBe(
-        `https://gateway.lighthouse.storage/ipfs/${mockFiles[index].hash}`
-      );
-    });
   });
 });
