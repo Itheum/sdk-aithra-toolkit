@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { MarshalManager } from '../core/marshalManager';
 import {
-  IMarshalGenerateParams,
-  IMarshalGenerateResponse,
+  IEncryptParams,
+  IEncryptResponse,
   IMarshalDecryptParams,
   IMarshalDecryptResponse
 } from '../core/types';
@@ -20,13 +20,13 @@ describe('MarshalManager', () => {
   });
 
   describe('generate', () => {
-    const validGenerateParams: IMarshalGenerateParams = {
+    const validGenerateParams: IEncryptParams = {
       dataNFTStreamUrl: 'https://example.com/stream',
       dataCreatorERDAddress: 'erd1example',
       dataCreatorSOLAddress: 'sol1example'
     };
 
-    const mockGenerateResponse: IMarshalGenerateResponse = {
+    const mockGenerateResponse: IEncryptResponse = {
       encryptedMessage: 'encrypted123',
       messageHash: 'hash123'
     };
@@ -34,7 +34,7 @@ describe('MarshalManager', () => {
     it('should successfully generate with valid parameters', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: mockGenerateResponse });
 
-      const result = await marshalManager.generate(validGenerateParams);
+      const result = await marshalManager.encrypt(validGenerateParams);
 
       expect(result).toEqual(mockGenerateResponse);
       expect(mockedAxios.post).toHaveBeenCalledWith(
@@ -55,9 +55,9 @@ describe('MarshalManager', () => {
         dataNFTStreamUrl: ''
       };
 
-      await expect(() =>
-        marshalManager.generate(invalidParams)
-      ).rejects.toThrow('dataNFTStreamUrl is required for generation');
+      await expect(() => marshalManager.encrypt(invalidParams)).rejects.toThrow(
+        'dataNFTStreamUrl is required for generation'
+      );
     });
 
     it('should throw API errors directly', async () => {
@@ -65,7 +65,7 @@ describe('MarshalManager', () => {
       mockedAxios.post.mockRejectedValueOnce(error);
 
       await expect(() =>
-        marshalManager.generate(validGenerateParams)
+        marshalManager.encrypt(validGenerateParams)
       ).rejects.toThrow(error);
     });
   });
