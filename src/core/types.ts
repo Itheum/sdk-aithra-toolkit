@@ -139,3 +139,54 @@ export interface IMarshalDecryptParams {
 export interface IMarshalDecryptResponse {
   [key: string]: any;
 }
+
+// Nft related
+
+export enum NFTType {
+  Music = 'music'
+  // Future types can be added here
+  // Art = 'art',
+  // Video = 'video',
+  // etc.
+}
+
+export interface BaseNFTMetadata {
+  animation_url: string;
+  attributes: NFTAttribute[];
+  description: string;
+  external_url: string;
+  image: string;
+  name: string;
+  properties: {
+    category: string;
+    files: NFTFile[];
+  };
+  symbol: string;
+}
+
+export interface NFTAttribute {
+  trait_type: string;
+  value: string;
+}
+
+export interface NFTFile {
+  type: string;
+  uri: string;
+}
+
+export interface MusicNFTConfig {
+  animationUrl: string;
+  itheumCreator: string;
+  itheumDataStreamUrl: string;
+  tokenCode: string;
+  description: string;
+  imageUrl: string;
+  name: string;
+  additionalTraits?: NFTAttribute[];
+  itheumDrop?: string;
+  rarity?: string;
+}
+
+export interface INFTMetadataBuilder {
+  buildMetadata(config: any): BaseNFTMetadata;
+}
