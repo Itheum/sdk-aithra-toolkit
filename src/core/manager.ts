@@ -12,7 +12,7 @@ import {
 } from './types';
 import { CreditManager } from './creditManager';
 import { StorageManager } from './storageManager';
-import { ManifestBuilderFactory } from './manifest-builders';
+import { ManifestBuilderFactory } from './manifestFactory';
 
 export class ItheumManager {
   private wallet: Wallet;
