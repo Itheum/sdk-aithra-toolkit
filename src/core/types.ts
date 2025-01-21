@@ -115,3 +115,27 @@ export interface IStorageManager {
   upload(params: IStorageManagerParams): Promise<UploadedFile[]>;
   pinToIpns(cid: string, address: string): Promise<IpnsResponse>;
 }
+
+export interface IMarshalManager {
+  encrypt(params: IEncryptParams): Promise<IEncryptResponse>;
+  decrypt(params: IMarshalDecryptParams): Promise<IMarshalDecryptResponse>;
+}
+
+export interface IEncryptParams {
+  dataNFTStreamUrl: string;
+  dataCreatorERDAddress?: string;
+  dataCreatorSOLAddress?: string;
+}
+
+export interface IEncryptResponse {
+  encryptedMessage: string;
+  messageHash: string;
+}
+
+export interface IMarshalDecryptParams {
+  encryptedMessage: string;
+}
+
+export interface IMarshalDecryptResponse {
+  [key: string]: any;
+}
