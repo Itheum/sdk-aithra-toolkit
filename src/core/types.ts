@@ -190,3 +190,26 @@ export interface MusicNFTConfig {
 export interface INFTMetadataBuilder {
   buildMetadata(config: any): BaseNFTMetadata;
 }
+
+// Mint related
+export interface MintConfig {
+  mintForSolAddr: string;
+  tokenName: string;
+  metadataOnIpfsUrl: string;
+  sellerFeeBasisPoints: number;
+  creators: Array<{
+    address: string;
+    share: number;
+  }>;
+  quantity: number;
+}
+
+export interface MintManagerParams {
+  config: MintConfig;
+  address: string;
+  paymentHash: string;
+}
+
+export interface IMintManager {
+  mint(params: MintManagerParams): Promise<string[]>;
+}
