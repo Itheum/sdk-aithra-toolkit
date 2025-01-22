@@ -28,6 +28,7 @@ describe('MusicNFTMetadataBuilder', () => {
       animationUrl: 'https://arweave.net/example-mp3',
       itheumCreator: 'Enh4wN39eKZ4xWAcKZCCVdxEnRCfVWkjaNT9aPDXS9nH',
       itheumDataStreamUrl: 'encoded-data-stream-url',
+      itheumDrop: '20',
       tokenCode: 'MUSG2',
       description: 'Dark Hip Hop Instrumentals Common Album',
       imageUrl: 'https://arweave.net/example-gif',

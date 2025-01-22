@@ -28,7 +28,7 @@ export class MusicNFTMetadataBuilder implements INFTMetadataBuilder {
       },
       {
         trait_type: 'ItheumDrop',
-        value: config.itheumDrop || '20'
+        value: config.itheumDrop
       },
       {
         trait_type: 'Type',
@@ -85,6 +85,7 @@ export class MusicNFTMetadataBuilder implements INFTMetadataBuilder {
       'itheumDataStreamUrl',
       'tokenCode',
       'description',
+      'itheumDrop',
       'imageUrl',
       'name'
     ];
