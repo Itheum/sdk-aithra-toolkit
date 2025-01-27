@@ -6,7 +6,7 @@ import { Keypair } from '@solana/web3.js';
 // Setup global fetch mock
 global.fetch = jest.fn(async (url) => {
   if (url.includes('payment-check')) {
-    return { json: async () => ({ costPerFile: 10 }) };
+    return { json: async () => ({ cost: 10 }) };
   }
   if (url.includes('jup.ag/price')) {
     return {

@@ -3,11 +3,11 @@ import {
   NFTMetadataBuilderFactory,
   MusicNFTMetadataBuilder
 } from '../core/nftMetadataFactory';
-import { NFTType, MusicNFTConfig } from '../core/types';
+import { NFTType, MusicNFTConfig, NFTTypes } from '../core/types';
 
 describe('NFTMetadataBuilderFactory', () => {
   it('should return MusicNFTMetadataBuilder for Music type', () => {
-    const builder = NFTMetadataBuilderFactory.getBuilder(NFTType.Music);
+    const builder = NFTMetadataBuilderFactory.getBuilder(NFTTypes.Music);
     expect(builder).toBeInstanceOf(MusicNFTMetadataBuilder);
   });
 
@@ -32,7 +32,8 @@ describe('MusicNFTMetadataBuilder', () => {
       tokenCode: 'MUSG2',
       description: 'Dark Hip Hop Instrumentals Common Album',
       imageUrl: 'https://arweave.net/example-gif',
-      name: 'MUSG2 - Cranium Beats'
+      name: 'MUSG2 - Cranium Beats',
+      previewMusicUrl: 'https://arweave.net/preview-mp3'
     };
   });
 
@@ -41,6 +42,7 @@ describe('MusicNFTMetadataBuilder', () => {
       'animationUrl',
       'itheumCreator',
       'itheumDataStreamUrl',
+      'itheumDrop',
       'tokenCode',
       'description',
       'imageUrl',
@@ -54,7 +56,7 @@ describe('MusicNFTMetadataBuilder', () => {
 
         expect(() => {
           builder.buildMetadata(invalidConfig);
-        }).toThrow(`Missing required field: ${field}`);
+        }).toThrow(`Missing required fields: ${field}`);
       });
 
       it(`should throw error when ${field} is empty`, () => {
@@ -65,7 +67,7 @@ describe('MusicNFTMetadataBuilder', () => {
 
         expect(() => {
           builder.buildMetadata(invalidConfig);
-        }).toThrow(`Missing required field: ${field}`);
+        }).toThrow(`Missing required fields: ${field}`);
       });
     });
   });
@@ -80,7 +82,7 @@ describe('MusicNFTMetadataBuilder', () => {
         external_url: 'https://itheum.io/music',
         image: validConfig.imageUrl,
         name: validConfig.name,
-        symbol: ''
+        symbol: validConfig.tokenCode
       });
 
       // Check default attributes
@@ -90,7 +92,7 @@ describe('MusicNFTMetadataBuilder', () => {
       });
       expect(metadata.attributes).toContainEqual({
         trait_type: 'ItheumDrop',
-        value: '20' // Default value
+        value: '20'
       });
       expect(metadata.attributes).toContainEqual({
         trait_type: 'Rarity',
@@ -148,7 +150,7 @@ describe('MusicNFTMetadataBuilder', () => {
           },
           {
             type: 'audio/mpeg',
-            uri: validConfig.animationUrl
+            uri: validConfig.previewMusicUrl
           }
         ]
       });

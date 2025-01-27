@@ -2,63 +2,116 @@ import { Connection, Keypair } from '@solana/web3.js';
 import { Wallet } from '@project-serum/anchor';
 import { itheumAgentLogger as logger } from './logger';
 import {
-  ICreditManager,
-  IStorageManager,
-  MusicPlaylistConfig,
-  MusicPlaylistManifest,
-  UploadedFile,
-  FileMetadata,
-  ManifestType
+  MintConfig,
+  MusicNFTConfig,
+  NFTType,
+  ManifestType,
+  NFTTypes,
+  MusicPlaylistManifest
 } from './types';
 import { CreditManager } from './creditManager';
 import { StorageManager } from './storageManager';
+import { MarshalManager } from './marshalManager';
+import { MintManager } from './mintManager';
+import { NFTMetadataBuilderFactory } from './nftMetadataFactory';
+import { buildPlaylistConfig } from '../helpers/buildPlaylist';
+import fs from 'fs';
+import path from 'path';
 import { ManifestBuilderFactory } from './manifestFactory';
+
+interface BuildUploadMintMusicNFTsParams {
+  folderPath: string;
+  playlist: {
+    name: string;
+    creator: string;
+  };
+  nft: {
+    tokenName: string;
+    sellerFeeBasisPoints: number;
+    quantity: number;
+    name: string;
+    description: string;
+  };
+  animation: {
+    animationUrl?: string;
+    animationFile?: string;
+  };
+}
+
+interface ConstructorParams {
+  connection: Connection;
+  keypair: Keypair;
+  apiUrl: string;
+  marshalUrl: string;
+  mintUrl: string;
+  priorityFee?: number;
+}
 
 export class ItheumManager {
   private wallet: Wallet;
-  private creditManager: ICreditManager;
-  private storageManager: IStorageManager;
+  private filesCreditManager: CreditManager;
+  private mintsCreditManager: CreditManager;
+  private storageManager: StorageManager;
+  private marshalManager: MarshalManager;
+  private mintManager: MintManager;
 
-  constructor(connection: Connection, keypair: Keypair, apiUrl: string) {
+  constructor({
+    connection,
+    keypair,
+    apiUrl,
+    marshalUrl,
+    mintUrl,
+    priorityFee = 0
+  }: ConstructorParams) {
     this.wallet = new Wallet(keypair);
-    this.creditManager = new CreditManager(
+    this.filesCreditManager = new CreditManager(
       connection,
       this.wallet,
       apiUrl,
-      500000
+      priorityFee
     );
-    this.storageManager = new StorageManager(`http://${apiUrl}`);
-
-    logger.info(
-      `Itheum Manager initialized with wallet: ${this.wallet.publicKey.toString()}`
+    this.mintsCreditManager = new CreditManager(
+      connection,
+      this.wallet,
+      mintUrl,
+      priorityFee
     );
+    this.storageManager = new StorageManager(apiUrl);
+    this.marshalManager = new MarshalManager(marshalUrl);
+    this.mintManager = new MintManager(mintUrl);
   }
 
-  /**
-   * Uploads music files and creates a playlist manifest
-   * @param files Array of music files to upload
-   * @param config Playlist configuration including name, creator, and metadata
-   * @returns Object containing upload status, manifest, and upload details
-   */
-  async uploadMusicFiles(files: File | File[], config: MusicPlaylistConfig) {
+  async buildUploadMintMusicNFTs({
+    folderPath,
+    playlist,
+    nft,
+    animation
+  }: BuildUploadMintMusicNFTsParams): Promise<{
+    success: boolean;
+    signatures: string[];
+  }> {
     try {
-      const fileArray = Array.isArray(files) ? files : [files];
-      logger.info(`Processing ${fileArray.length} music files for upload`);
-
-      // 1. Handle payment
-      let paymentSignature = await this.creditManager.handlePayment(
-        fileArray.length
+      // Build playlist config and get files
+      const { config, audioFiles, imageFiles } = await buildPlaylistConfig(
+        folderPath,
+        playlist.name,
+        playlist.creator
       );
-      logger.info(`Payment processed with signature: ${paymentSignature}`);
 
-      // 2. Upload files
+      logger.info('Playlist build from folder complete');
+
+      let paymentHash = await this.filesCreditManager.handlePayment(
+        audioFiles.length + imageFiles.length
+      );
+
       const uploadedFiles = await this.storageManager.upload({
-        files: fileArray,
+        files: [...audioFiles, ...imageFiles],
         category: ManifestType.MusicPlaylist,
-        paymentHash: paymentSignature,
+        paymentHash: paymentHash,
         address: this.wallet.publicKey.toString()
       });
-      logger.info(`Files uploaded successfully`);
+
+      logger.info('Files uploaded successfully');
 
       // 3. Build manifest
       const manifestBuilder = ManifestBuilderFactory.getBuilder(
@@ -69,9 +122,11 @@ export class ItheumManager {
         uploadedFiles,
         config
       )) as MusicPlaylistManifest;
+
       logger.info(`Manifest built successfully`);
 
-      // 4. Create manifest JSON file
+      paymentHash = await this.filesCreditManager.handlePayment(1);
+
       const manifestBlob = new Blob([JSON.stringify(manifest)], {
         type: 'application/json'
       });
@@ -79,32 +134,127 @@ export class ItheumManager {
         type: 'application/json'
       });
 
-      paymentSignature = await this.creditManager.handlePayment(1);
-
-      // 5. Upload manifest
       const manifestUpload = await this.storageManager.upload({
-        files: manifestFile,
+        files: [manifestFile],
         category: ManifestType.MusicPlaylist,
-        paymentHash: paymentSignature,
+        paymentHash: paymentHash,
         address: this.wallet.publicKey.toString()
       });
 
-      // 6. Manifest is the first object in response
-      const manifestResponse = manifestUpload[0];
+      logger.info('Manifest uploaded successfully');
 
-      // 7. Pin to IPNS
       const ipnsResponse = await this.storageManager.pinToIpns(
-        manifestResponse.hash,
+        manifestUpload[0].hash,
         this.wallet.publicKey.toString()
+      );
+
+      logger.info('Manifest pinned to IPNS successfully');
+
+      // Handle animation file
+      let animationUrl = animation.animationUrl;
+      if (animation.animationFile) {
+        const fileContent = await fs.promises.readFile(animation.animationFile);
+        const fileName = path.basename(animation.animationFile);
+        const fileType = path.extname(fileName).toLowerCase().slice(1);
+
+        const mimeType = ['mp4', 'webm', 'ogg'].includes(fileType)
+          ? `video/${fileType}`
+          : ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileType)
+            ? `image/${fileType === 'jpg' ? 'jpeg' : fileType}`
+            : null;
+
+        if (!mimeType) throw new Error('Unsupported animation file type');
+
+        const animationFile = new File([fileContent], fileName, {
+          type: mimeType
+        });
+
+        let paymentHash = await this.filesCreditManager.handlePayment(1);
+
+        const uploadedAnimation = await this.storageManager.upload({
+          files: [animationFile],
+          category: 'staticdata',
+          paymentHash: paymentHash,
+          address: this.wallet.publicKey.toString()
+        });
+
+        logger.info('Animation file uploaded successfully');
+
+        animationUrl = `https://gateway.lighthouse.storage/ipfs/${uploadedAnimation[0].hash}`;
+      }
+
+      if (!animationUrl) {
+        throw new Error(
+          'Either animationPath or animationUrl must be provided'
+        );
+      }
+
+      // Generate NFT metadata
+      const nftConfig: MusicNFTConfig = {
+        animationUrl,
+        itheumCreator: this.wallet.publicKey.toString(),
+        itheumDataStreamUrl: `https://gateway.lighthouse.storage/ipfs/${ipnsResponse.pointingHash}?dmf-nestedstream=1`,
+        imageUrl: animationUrl,
+        name: nft.name,
+        previewMusicUrl: `https://gateway.lighthouse.storage/ipfs/${uploadedFiles[0].hash}`,
+        description: nft.description,
+        tokenCode: 'MUSG',
+        itheumDrop: '30'
+      };
+
+      const encryptedResponse = await this.marshalManager.encrypt({
+        dataNFTStreamUrl: nftConfig.itheumDataStreamUrl,
+        dataCreatorSOLAddress: this.wallet.publicKey.toString()
+      });
+
+      logger.info('Encrypted data stream URL successfully');
+
+      nftConfig.itheumDataStreamUrl = encryptedResponse.encryptedMessage;
+      const builder = NFTMetadataBuilderFactory.getBuilder(NFTTypes.Music);
+      const nftMetadata = builder.buildMetadata(nftConfig);
+
+      logger.info('NFT metadata built successfully');
+
+      paymentHash = await this.filesCreditManager.handlePayment(1);
+
+      const uploadedMetadata = await this.storageManager.upload({
+        files: [new File([JSON.stringify(nftMetadata)], 'metadata.json')],
+        category: 'staticdata',
+        paymentHash: paymentHash,
+        address: this.wallet.publicKey.toString()
+      });
+
+      logger.info('NFT metadata uploaded successfully');
+
+      // Mint NFTs
+      const mintConfig: MintConfig = {
+        mintForSolAddr: this.wallet.publicKey.toString(),
+        tokenName: nft.tokenName,
+        metadataOnIpfsUrl: `https://gateway.lighthouse.storage/ipfs/${uploadedMetadata[0].hash}`,
+        sellerFeeBasisPoints: nft.sellerFeeBasisPoints,
+        creators: [{ address: this.wallet.publicKey.toString(), share: 100 }],
+        quantity: nft.quantity
+      };
+
+      paymentHash = await this.mintsCreditManager.handlePayment(nft.quantity);
+
+      const signatures = await this.mintManager.mint({
+        config: mintConfig,
+        paymentHash: paymentHash,
+        address: this.wallet.publicKey.toString()
+      });
+
+      logger.info('NFTs minted successfully');
+      logger.info(
+        `NFTs minted: ${signatures.length} with signatures: ${signatures.join(', ')}`
       );
 
       return {
         success: true,
-        ipnsHash: ipnsResponse.hash,
-        pointingHash: ipnsResponse.pointingHash
+        signatures
       };
     } catch (error) {
-      logger.error(`Error in music upload process: ${error}`);
+      logger.error(`Error in buildUploadMintMusicNFTs: ${error}`);
       throw error;
     }
   }

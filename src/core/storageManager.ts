@@ -36,7 +36,7 @@ export class StorageManager implements IStorageManager {
     for (const file of files) {
       // Detect file type and prepare stream/metadata
       // Append file to FormData
-      formData.append('files', Buffer.from(await file.bytes()), {
+      formData.append('files', Buffer.from(await file.arrayBuffer()), {
         filename: file.name,
         contentType: file.type
       });

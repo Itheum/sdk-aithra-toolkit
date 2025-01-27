@@ -1,62 +1,47 @@
 import {
-  BaseNFTMetadata,
   INFTMetadataBuilder,
   MusicNFTConfig,
-  NFTAttribute,
-  NFTType
+  MusicNFTMetadata,
+  NFTType,
+  NFTTypes
 } from './types';
 
 export class NFTMetadataBuilderFactory {
-  static getBuilder(type: NFTType): INFTMetadataBuilder {
+  static getBuilder(
+    type: typeof NFTTypes.Music
+  ): INFTMetadataBuilder<typeof NFTTypes.Music>;
+  static getBuilder<T extends NFTType>(type: T): INFTMetadataBuilder<T> {
     switch (type) {
-      case NFTType.Music:
-        return new MusicNFTMetadataBuilder();
+      case NFTTypes.Music:
+        return new MusicNFTMetadataBuilder() as unknown as INFTMetadataBuilder<T>;
       default:
         throw new Error(`No builder found for NFT type: ${type}`);
     }
   }
 }
 
-export class MusicNFTMetadataBuilder implements INFTMetadataBuilder {
-  buildMetadata(config: MusicNFTConfig): BaseNFTMetadata {
+export class MusicNFTMetadataBuilder
+  implements INFTMetadataBuilder<typeof NFTTypes.Music>
+{
+  buildMetadata(config: MusicNFTConfig): MusicNFTMetadata {
     this.validateConfig(config);
 
-    const baseAttributes: NFTAttribute[] = [
-      {
-        trait_type: 'App',
-        value: 'itheum.io/music'
-      },
-      {
-        trait_type: 'ItheumDrop',
-        value: config.itheumDrop
-      },
-      {
-        trait_type: 'Type',
-        value: 'Music'
-      },
-      {
-        trait_type: 'itheum_creator',
-        value: config.itheumCreator
-      },
+    const baseAttributes = [
+      { trait_type: 'App', value: 'itheum.io/music' },
+      { trait_type: 'ItheumDrop', value: config.itheumDrop },
+      { trait_type: 'Type', value: 'Music' },
+      { trait_type: 'itheum_creator', value: config.itheumCreator },
       {
         trait_type: 'itheum_data_stream_url',
         value: config.itheumDataStreamUrl
       },
-      {
-        trait_type: 'Rarity',
-        value: config.rarity || 'Common'
-      },
-      {
-        trait_type: 'TokenCode',
-        value: config.tokenCode
-      }
+      { trait_type: 'Rarity', value: config.rarity || 'Common' },
+      { trait_type: 'TokenCode', value: config.tokenCode }
     ];
-
-    const attributes = [...baseAttributes, ...(config.additionalTraits || [])];
 
     return {
       animation_url: config.animationUrl,
-      attributes,
+      attributes: [...baseAttributes, ...(config.additionalTraits ?? [])],
       description: config.description,
       external_url: 'https://itheum.io/music',
       image: config.imageUrl,
@@ -64,17 +49,11 @@ export class MusicNFTMetadataBuilder implements INFTMetadataBuilder {
       properties: {
         category: 'audio',
         files: [
-          {
-            type: 'image/gif',
-            uri: config.imageUrl
-          },
-          {
-            type: 'audio/mpeg',
-            uri: config.animationUrl
-          }
+          { type: 'image/gif', uri: config.imageUrl },
+          { type: 'audio/mpeg', uri: config.previewMusicUrl }
         ]
       },
-      symbol: ''
+      symbol: config.tokenCode
     };
   }
 
@@ -90,10 +69,9 @@ export class MusicNFTMetadataBuilder implements INFTMetadataBuilder {
       'name'
     ];
 
-    for (const field of requiredFields) {
-      if (!config[field]) {
-        throw new Error(`Missing required field: ${field}`);
-      }
+    const missing = requiredFields.filter((field) => !config[field]);
+    if (missing.length) {
+      throw new Error(`Missing required fields: ${missing.join(', ')}`);
     }
   }
 }

@@ -28,7 +28,7 @@ export class CreditManager implements ICreditManager {
     'iTHSaXjdqFtcnLK4EFEs7mqYQbJb6B7GostqWbBQwaV'
   );
   private readonly BURNER_WALLET = new PublicKey(
-    'ETRT3kRcn5k4yigqj7Q2j9Zvi7vkKhwD4tzw8H3GPJuc'
+    'E8Eqn9cjhvCd3NdwbB53mhJwqcVzK38sA9NP8qBkCkCo'
   );
   private readonly apiUrl: string;
   private readonly priorityFee: number;
@@ -59,10 +59,10 @@ export class CreditManager implements ICreditManager {
     this.balance = await this.fetchBalance();
   }
 
-  private async getCostPerFile(): Promise<number> {
-    const response = await fetch(`http://${this.apiUrl}/payment-check`);
-    const { costPerFile } = await response.json();
-    return Number(costPerFile);
+  private async getCost(): Promise<number> {
+    const response = await fetch(`${this.apiUrl}/payment-check`);
+    const { cost } = await response.json();
+    return Number(cost);
   }
 
   private async getItheumPrice(): Promise<number> {
@@ -76,7 +76,7 @@ export class CreditManager implements ICreditManager {
 
   async handleCredits(numberOfFiles: number): Promise<CreditRequirement> {
     await this.syncBalance();
-    const costPerFile = await this.getCostPerFile();
+    const costPerFile = await this.getCost();
     const totalCost = costPerFile * numberOfFiles;
     const totalCostWithSlippage = totalCost + totalCost * 0.01;
 
@@ -159,7 +159,7 @@ export class CreditManager implements ICreditManager {
     });
   }
 
-  private async sendTokensToBurner(amount: number): Promise<string> {
+  public async pay(amount: number): Promise<string> {
     const fromTokenAccount = getAssociatedTokenAddressSync(
       this.ITHEUM_MINT,
       this.wallet.publicKey
@@ -201,9 +201,7 @@ export class CreditManager implements ICreditManager {
         await this.syncBalance();
       }
 
-      const paymentSignature = await this.sendTokensToBurner(
-        creditReq.requiredAmount
-      );
+      const paymentSignature = await this.pay(creditReq.requiredAmount);
       itheumAgentLogger.log(
         `Payment sent. https://solscan.io/tx/${paymentSignature}`
       );

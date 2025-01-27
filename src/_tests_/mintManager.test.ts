@@ -32,14 +32,16 @@ describe('MintManager', () => {
   });
 
   it('should successfully mint with valid parameters', async () => {
-    const mockResponse = { success: true };
-    mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
+    const mockSignatures = ['sig1', 'sig2'];
+    mockedAxios.post.mockResolvedValueOnce({
+      data: { signatures: mockSignatures }
+    });
 
     const result = await mintManager.mint(mockParams);
 
-    expect(result).toEqual(mockResponse);
+    expect(result).toEqual(mockSignatures);
     expect(mockedAxios.post).toHaveBeenCalledWith(
-      `${apiBaseUrl}/mint`,
+      `${apiBaseUrl}/bulk-mint`,
       mockParams.config,
       {
         headers: {

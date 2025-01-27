@@ -8,14 +8,14 @@ export class MintManager implements IMintManager {
     this.apiBaseUrl = apiBaseUrl;
   }
 
-  async mint(params: MintManagerParams): Promise<any> {
+  async mint(params: MintManagerParams): Promise<string[]> {
     if (!params.config || !params.address || !params.paymentHash) {
       throw new Error('Missing required parameters');
     }
 
     try {
       const response = await axios.post(
-        `${this.apiBaseUrl}/mint`,
+        `${this.apiBaseUrl}/bulk-mint`,
         params.config,
         {
           headers: {
@@ -26,7 +26,9 @@ export class MintManager implements IMintManager {
         }
       );
 
-      return response.data;
+      const { signatures } = response.data;
+
+      return signatures as string[];
     } catch (error) {
       throw error;
     }
