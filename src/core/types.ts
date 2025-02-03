@@ -358,3 +358,14 @@ export interface MintManagerParams {
 export interface IMintManager {
   mint(params: MintManagerParams): Promise<string[]>;
 }
+
+export type TrackInfo = Array<{
+  [trackName: string]: {
+    metadata: {
+      artist: string;
+      album: string;
+      title: string;
+      category: string;
+    };
+  };
+}>;
