@@ -1,12 +1,7 @@
 import { Wallet } from '@project-serum/anchor';
-import {
-  AddressLookupTableAccount,
-  Connection,
-  PublicKey,
-  TransactionInstruction
-} from '@solana/web3.js';
+import { Connection, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { ICreditManager } from './types';
-import itheumAgentLogger from './logger';
+import aithraToolkitLogger from './logger';
 import {
   createTransferInstruction,
   getAssociatedTokenAddressSync,
@@ -24,7 +19,7 @@ export class CreditManager implements ICreditManager {
   private connection: Connection;
   private wallet: Wallet;
   private balance: number;
-  private readonly ITHEUM_MINT = new PublicKey(
+  private readonly AITHRA_MINT = new PublicKey(
     'iTHSaXjdqFtcnLK4EFEs7mqYQbJb6B7GostqWbBQwaV'
   );
   private readonly BURNER_WALLET = new PublicKey(
@@ -49,7 +44,7 @@ export class CreditManager implements ICreditManager {
   async fetchBalance(): Promise<number> {
     const balance = await getTokenBalanceWeb3(
       this.connection,
-      this.ITHEUM_MINT,
+      this.AITHRA_MINT,
       this.wallet.publicKey
     );
     return balance;
@@ -65,13 +60,13 @@ export class CreditManager implements ICreditManager {
     return Number(cost);
   }
 
-  private async getItheumPrice(): Promise<number> {
+  private async getAithraPrice(): Promise<number> {
     const tokenData = await (
       await fetch(
-        `https://api.jup.ag/price/v2?ids=${this.ITHEUM_MINT.toString()}&vsToken=So11111111111111111111111111111111111111112`
+        `https://api.jup.ag/price/v2?ids=${this.AITHRA_MINT.toString()}&vsToken=So11111111111111111111111111111111111111112`
       )
     ).json();
-    return tokenData.data[this.ITHEUM_MINT.toString()].price;
+    return tokenData.data[this.AITHRA_MINT.toString()].price;
   }
 
   async handleCredits(numberOfFiles: number): Promise<CreditRequirement> {
@@ -97,12 +92,12 @@ export class CreditManager implements ICreditManager {
     };
   }
 
-  private async swapSolForItheum(amountInSol: number): Promise<string> {
+  private async swapSolForAithra(amountInSol: number): Promise<string> {
     const lamports = Math.floor(amountInSol * Math.pow(10, 9));
 
     const quoteResponse = await (
       await fetch(
-        `https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${this.ITHEUM_MINT.toString()}&amount=${lamports}&slippageBps=50`
+        `https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${this.AITHRA_MINT.toString()}&amount=${lamports}&slippageBps=50`
       )
     ).json();
 
@@ -155,18 +150,18 @@ export class CreditManager implements ICreditManager {
       wallet: this.wallet,
       instructions: preparedInstructions,
       addressLookupTableAccounts: addressLookupTableAddresses,
-      priorityFee: 50000
+      priorityFee: this.priorityFee
     });
   }
 
   public async pay(amount: number): Promise<string> {
     const fromTokenAccount = getAssociatedTokenAddressSync(
-      this.ITHEUM_MINT,
+      this.AITHRA_MINT,
       this.wallet.publicKey
     );
 
     const toTokenAccount = getAssociatedTokenAddressSync(
-      this.ITHEUM_MINT,
+      this.AITHRA_MINT,
       this.BURNER_WALLET
     );
 
@@ -190,25 +185,25 @@ export class CreditManager implements ICreditManager {
       const creditReq = await this.handleCredits(numberOfFiles);
 
       if (creditReq.needsTokenPurchase) {
-        const itheumPrice = await this.getItheumPrice();
-        const solAmount = creditReq.amountToPurchase * itheumPrice;
+        const aithraPrice = await this.getAithraPrice();
+        const solAmount = creditReq.amountToPurchase * aithraPrice;
 
-        const swapSignature = await this.swapSolForItheum(solAmount);
-        itheumAgentLogger.success(
-          `Swapped SOL for ITHEUM tokens. https://solscan.io/tx/${swapSignature}`
+        const swapSignature = await this.swapSolForAithra(solAmount);
+        aithraToolkitLogger.success(
+          `Swapped SOL for AITHRA tokens. https://solscan.io/tx/${swapSignature}`
         );
 
         await this.syncBalance();
       }
 
       const paymentSignature = await this.pay(creditReq.requiredAmount);
-      itheumAgentLogger.log(
+      aithraToolkitLogger.log(
         `Payment sent. https://solscan.io/tx/${paymentSignature}`
       );
 
       return paymentSignature;
     } catch (err) {
-      itheumAgentLogger.error(`Error buying credits: ${err}`);
+      aithraToolkitLogger.error(`Error buying credits: ${err}`);
       throw err;
     }
   }

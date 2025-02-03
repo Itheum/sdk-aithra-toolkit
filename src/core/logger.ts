@@ -1,6 +1,6 @@
 import { Logger } from './types';
 
-class ItheumAgentLogger implements Logger {
+class AithraToolkitLogger implements Logger {
   constructor() {
     this.isNode =
       typeof process !== 'undefined' &&
@@ -13,7 +13,7 @@ class ItheumAgentLogger implements Logger {
   verbose = false;
   closeByNewLine = true;
   useIcons = true;
-  private prefix = 'ITHEUM-AGENT';
+  private prefix = 'AITHRA-TOOLKIT';
 
   #getColor(foregroundColor = '', backgroundColor = '') {
     if (!this.isNode) {
@@ -142,8 +142,8 @@ class ItheumAgentLogger implements Logger {
   }
 }
 
-export const itheumAgentLogger = new ItheumAgentLogger();
-itheumAgentLogger.closeByNewLine = true;
-itheumAgentLogger.useIcons = true;
+export const aithraToolkitLogger = new AithraToolkitLogger();
+aithraToolkitLogger.closeByNewLine = true;
+aithraToolkitLogger.useIcons = true;
 
-export default itheumAgentLogger;
+export default aithraToolkitLogger;

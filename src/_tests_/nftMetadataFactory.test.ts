@@ -42,8 +42,6 @@ describe('MusicNFTMetadataBuilder', () => {
       'animationUrl',
       'itheumCreator',
       'itheumDataStreamUrl',
-      'itheumDrop',
-      'tokenCode',
       'description',
       'imageUrl',
       'name'

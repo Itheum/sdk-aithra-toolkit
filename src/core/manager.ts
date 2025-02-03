@@ -1,6 +1,6 @@
 import { Connection, Keypair } from '@solana/web3.js';
 import { Wallet } from '@project-serum/anchor';
-import { itheumAgentLogger as logger } from './logger';
+import { aithraToolkitLogger as logger } from './logger';
 import {
   MintConfig,
   MusicNFTConfig,
@@ -25,6 +25,7 @@ interface BuildUploadMintMusicNFTsParams {
     name: string;
     creator: string;
   };
+  tokenCode: string;
   nft: {
     tokenName: string;
     sellerFeeBasisPoints: number;
@@ -41,44 +42,37 @@ interface BuildUploadMintMusicNFTsParams {
 interface ConstructorParams {
   connection: Connection;
   keypair: Keypair;
-  apiUrl: string;
-  marshalUrl: string;
-  mintUrl: string;
   priorityFee?: number;
 }
 
-export class ItheumManager {
+export class AithraManager {
   private wallet: Wallet;
   private filesCreditManager: CreditManager;
   private mintsCreditManager: CreditManager;
   private storageManager: StorageManager;
   private marshalManager: MarshalManager;
   private mintManager: MintManager;
+  private apiUrl = 'https://api.itheumcloud.com/zsuiteapi';
+  private marshalUrl = 'https://api.itheumcloud.com/datamarshalapi/router/v1';
+  private mintUrl = 'https://api.itheumcloud.com/itheumapi';
 
-  constructor({
-    connection,
-    keypair,
-    apiUrl,
-    marshalUrl,
-    mintUrl,
-    priorityFee = 0
-  }: ConstructorParams) {
+  constructor({ connection, keypair, priorityFee = 0 }: ConstructorParams) {
     this.wallet = new Wallet(keypair);
     this.filesCreditManager = new CreditManager(
       connection,
       this.wallet,
-      apiUrl,
+      this.apiUrl,
       priorityFee
     );
     this.mintsCreditManager = new CreditManager(
       connection,
       this.wallet,
-      mintUrl,
+      this.mintUrl,
       priorityFee
     );
-    this.storageManager = new StorageManager(apiUrl);
-    this.marshalManager = new MarshalManager(marshalUrl);
-    this.mintManager = new MintManager(mintUrl);
+    this.storageManager = new StorageManager(this.apiUrl);
+    this.marshalManager = new MarshalManager(this.marshalUrl);
+    this.mintManager = new MintManager(this.mintUrl);
   }
 
   async buildUploadMintMusicNFTs({

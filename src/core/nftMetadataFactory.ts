@@ -62,9 +62,7 @@ export class MusicNFTMetadataBuilder
       'animationUrl',
       'itheumCreator',
       'itheumDataStreamUrl',
-      'tokenCode',
       'description',
-      'itheumDrop',
       'imageUrl',
       'name'
     ];

@@ -303,11 +303,11 @@ export interface NFTConfigBase {
 /** Configuration specific to Music NFTs */
 export interface MusicNFTConfig extends NFTConfigBase {
   /** Token identifier code */
-  tokenCode: string;
+  tokenCode?: string;
   /** Drop identifier */
-  itheumDrop: string;
+  itheumDrop?: string;
   /** Preview music url */
-  previewMusicUrl: string;
+  previewMusicUrl?: string;
   /** Optional rarity level */
   rarity?: string;
 }

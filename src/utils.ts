@@ -9,7 +9,7 @@ import {
   TransactionInstruction,
   PublicKey
 } from '@solana/web3.js';
-import itheumAgentLogger from './core/logger';
+import aithraToolkitLogger from './core/logger';
 import {
   getAssociatedTokenAddress,
   getAssociatedTokenAddressSync,
@@ -81,7 +81,7 @@ export async function signSendAndConfirmTransaction({
       }
     }
   } catch (error) {
-    itheumAgentLogger.error(` Transaction failed`, error);
+    aithraToolkitLogger.error(` Transaction failed`, error);
     throw Error('Transaction failed');
   }
 }
