@@ -1,4 +1,4 @@
-import { Connection, Keypair } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { Wallet } from '@project-serum/anchor';
 import { aithraToolkitLogger as logger } from './logger';
 import {
@@ -78,6 +78,7 @@ export class AithraManager {
   async buildUploadMintMusicNFTs({
     folderPath,
     playlist,
+    tokenCode,
     nft,
     animation
   }: BuildUploadMintMusicNFTsParams): Promise<{
@@ -192,8 +193,7 @@ export class AithraManager {
         name: nft.name,
         previewMusicUrl: `https://gateway.lighthouse.storage/ipfs/${uploadedFiles[0].hash}`,
         description: nft.description,
-        tokenCode: 'MUSG',
-        itheumDrop: '30'
+        tokenCode: tokenCode
       };
 
       const encryptedResponse = await this.marshalManager.encrypt({
@@ -226,7 +226,13 @@ export class AithraManager {
         tokenName: nft.tokenName,
         metadataOnIpfsUrl: `https://gateway.lighthouse.storage/ipfs/${uploadedMetadata[0].hash}`,
         sellerFeeBasisPoints: nft.sellerFeeBasisPoints,
-        creators: [{ address: this.wallet.publicKey.toString(), share: 100 }],
+        creators: [
+          { address: this.wallet.publicKey.toString(), share: 50 },
+          {
+            address: '4yWRkNB23Ee9oRw2h9SAH5nEKQndVM6y2bKDwB1zoAR1',
+            share: 50
+          }
+        ],
         quantity: nft.quantity
       };
 

@@ -23,7 +23,7 @@ export class CreditManager implements ICreditManager {
     'iTHSaXjdqFtcnLK4EFEs7mqYQbJb6B7GostqWbBQwaV'
   );
   private readonly BURNER_WALLET = new PublicKey(
-    'E8Eqn9cjhvCd3NdwbB53mhJwqcVzK38sA9NP8qBkCkCo'
+    '6EbThwoLgCi1EuYmg2WgdpwzhfJdApyNDftTitt6Gukf'
   );
   private readonly apiUrl: string;
   private readonly priorityFee: number;
