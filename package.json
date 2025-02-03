@@ -1,5 +1,5 @@
 {
-  "name": "agent-sdk",
+  "name": "sdk-aithra-toolkit",
   "version": "0.0.1",
   "description": "The SDK for the agents",
   "main": "dist/index.js",
