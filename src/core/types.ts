@@ -42,7 +42,7 @@ export interface MusicTrackData {
   /** Album name */
   album: string;
   /** Audio file source URL */
-  src: string;
+  file: string;
   /** Album artwork URL */
   cover_art_url: string;
   /** Track title */

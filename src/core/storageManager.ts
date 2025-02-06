@@ -54,7 +54,7 @@ export class StorageManager implements IStorageManager {
         headers: {
           ...formData.getHeaders(),
           'payment-hash': params.paymentHash,
-          address: params.address
+          'address': params.address
         }
       }
     );

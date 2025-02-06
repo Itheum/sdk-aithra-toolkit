@@ -79,7 +79,7 @@ export class MusicPlaylistBuilder implements IManifestBuilder {
             album:
               metadata.album || musicConfig.defaultMetadata?.album || 'Unknown',
             cover_art_url: `https://gateway.lighthouse.storage/ipfs/${coverArtFile.hash}`,
-            src: `https://gateway.lighthouse.storage/ipfs/${audioFile.hash}`,
+            file: `https://gateway.lighthouse.storage/ipfs/${audioFile.hash}`,
             title: metadata.title
           };
         }
