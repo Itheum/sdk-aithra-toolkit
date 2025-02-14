@@ -6,6 +6,7 @@ import {
   IpnsResponse,
   UploadedFile
 } from './types';
+import { Result } from '../result';
 import fs from 'fs';
 
 export class StorageManager implements IStorageManager {
@@ -20,55 +21,61 @@ export class StorageManager implements IStorageManager {
    * @param params Upload parameters including files, manifest type, payment hash, and address
    * @returns Promise of uploaded files
    */
-  async upload(params: IStorageManagerParams): Promise<UploadedFile[]> {
-    // 1. Normalize files to an array
-    const files = Array.isArray(params.files) ? params.files : [params.files];
+  async upload(params: IStorageManagerParams): Promise<Result<UploadedFile[], Error>> {
+    try {
+      // 1. Normalize and validate files
+      const files = Array.isArray(params.files) ? params.files : [params.files];
+      if (!files || files.length === 0) {
+        return Result.err(new Error('No files provided for upload'));
+      }
 
-    // 2. Validate files exist
-    if (!files || files.length === 0) {
-      throw new Error('No files provided for upload');
-    }
+      // 2. Create FormData for upload
+      const formData = new FormData();
 
-    // 3. Create FormData for upload
-    const formData = new FormData();
-
-    // 4. Process each file based on its type
-    for (const file of files) {
-      // Detect file type and prepare stream/metadata
-      // Append file to FormData
-      formData.append('files', Buffer.from(await file.arrayBuffer()), {
-        filename: file.name,
-        contentType: file.type
-      });
-    }
-
-    // 5. Add additional metadata
-    formData.append('category', params.category);
-    formData.append('origin', 'agent-sdk');
-
-    // 6. Send upload request
-    const response = await axios.post(
-      `${this.apiBaseUrl}/paymentOnTheGo/upload_v2`,
-      formData,
-      {
-        headers: {
-          ...formData.getHeaders(),
-          'payment-hash': params.paymentHash,
-          'address': params.address
+      // 3. Process files
+      for (const file of files) {
+        try {
+          const buffer = await file.arrayBuffer();
+          formData.append('files', Buffer.from(buffer), {
+            filename: file.name,
+            contentType: file.type
+          });
+        } catch (err) {
+          return Result.err(new Error(`Failed to process file ${file.name}: ${err.message}`));
         }
       }
-    );
 
-    return response.data;
+      // 4. Add metadata
+      formData.append('category', params.category);
+      formData.append('origin', 'agent-sdk');
+
+      // 5. Send upload request
+      const response = await axios.post(
+        `${this.apiBaseUrl}/paymentOnTheGo/upload_v2`,
+        formData,
+        {
+          headers: {
+            ...formData.getHeaders(),
+            'payment-hash': params.paymentHash,
+            'address': params.address
+          }
+        }
+      );
+
+      return Result.ok(response.data);
+    } catch (err) {
+      return Result.err(new Error(`Upload failed: ${err.message}`));
+    }
   }
 
-  async pinToIpns(cid: string, address: string): Promise<IpnsResponse> {
+  async pinToIpns(cid: string, address: string): Promise<Result<IpnsResponse, Error>> {
+    // Validate inputs
     if (!cid) {
-      throw new Error('CID is required for IPNS pinning');
+      return Result.err(new Error('CID is required for IPNS pinning'));
     }
 
     if (!address) {
-      throw new Error('Address is required for IPNS pinning');
+      return Result.err(new Error('Address is required for IPNS pinning'));
     }
 
     try {
@@ -83,9 +90,9 @@ export class StorageManager implements IStorageManager {
         }
       );
 
-      return response.data;
-    } catch (error) {
-      throw error;
+      return Result.ok(response.data);
+    } catch (err) {
+      return Result.err(new Error(`IPNS pinning failed: ${err.message}`));
     }
   }
 }

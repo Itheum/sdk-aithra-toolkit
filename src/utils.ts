@@ -9,12 +9,13 @@ import {
   TransactionInstruction,
   PublicKey
 } from '@solana/web3.js';
-import aithraToolkitLogger from './core/logger';
+import {aithraToolkitLogger} from './core/logger';
 import {
   getAssociatedTokenAddress,
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
+import { Result } from './result';
 
 interface SignAndSendTransactionParams {
   connection: Connection;
@@ -29,8 +30,10 @@ export async function signSendAndConfirmTransaction({
   wallet,
   instructions,
   priorityFee = 0,
-  addressLookupTableAccounts = []
-}: SignAndSendTransactionParams): Promise<TransactionSignature> {
+  addressLookupTableAccounts 
+}: SignAndSendTransactionParams): Promise<Result<TransactionSignature, Error>> {
+  try {
+
   let { blockhash } = await connection.getLatestBlockhash();
 
   if (priorityFee > 0) {
@@ -40,49 +43,49 @@ export async function signSendAndConfirmTransaction({
     instructions = [priorityFeeIx, ...instructions];
   }
 
-  // Create transaction with initial blockhash
-  let versionedTx = new VersionedTransaction(
-    new TransactionMessage({
-      payerKey: wallet.publicKey,
-      recentBlockhash: blockhash,
-      instructions
-    }).compileToV0Message(addressLookupTableAccounts)
-  );
-
-  try {
+  
+    let versionedTx = new VersionedTransaction(
+      new TransactionMessage({
+        payerKey: wallet.publicKey,
+        recentBlockhash: blockhash,
+        instructions
+      }).compileToV0Message(addressLookupTableAccounts ?? [])
+    );
     versionedTx.sign([wallet.payer]);
     const serializedTx = versionedTx.serialize();
 
     const signature: TransactionSignature = await connection.sendRawTransaction(
       serializedTx,
-      {}
+      {skipPreflight:true}
     );
 
     const MAX_RETRIES = 4;
     let currentTry = 0;
 
-    // wait 3 seconds
+    // wait 5 seconds
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
     while (currentTry < MAX_RETRIES) {
       try {
         const status = await connection.getSignatureStatus(signature);
         if (status.value.confirmationStatus === 'finalized' || 'confirmed') {
-          return signature;
+          return Result.ok(signature);
         } else {
-          throw new Error('Transaction failed to confirm');
+          return Result.err(new Error('Transaction failed to confirm'));
         }
       } catch (confirmError) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         currentTry++;
         if (currentTry === MAX_RETRIES) {
-          throw confirmError;
+          return Result.err(confirmError instanceof Error ? confirmError : new Error(String(confirmError)));
         }
       }
     }
+    
+    return Result.err(new Error('Transaction failed after maximum retries'));
   } catch (error) {
     aithraToolkitLogger.error(` Transaction failed`, error);
-    throw Error('Transaction failed');
+    return Result.err(new Error('Transaction failed'));
   }
 }
 

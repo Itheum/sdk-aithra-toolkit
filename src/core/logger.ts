@@ -146,4 +146,3 @@ export const aithraToolkitLogger = new AithraToolkitLogger();
 aithraToolkitLogger.closeByNewLine = true;
 aithraToolkitLogger.useIcons = true;
 
-export default aithraToolkitLogger;

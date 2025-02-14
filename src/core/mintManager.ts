@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Result } from '../result';
 import { MintConfig, MintManagerParams, IMintManager } from './types';
 
 export class MintManager implements IMintManager {
@@ -8,9 +9,10 @@ export class MintManager implements IMintManager {
     this.apiBaseUrl = apiBaseUrl;
   }
 
-  async mint(params: MintManagerParams): Promise<string[]> {
+  async mint(params: MintManagerParams): Promise<Result<string[], Error>> {
+    // Validate input parameters
     if (!params.config || !params.address || !params.paymentHash) {
-      throw new Error('Missing required parameters');
+      return Result.err(new Error('Missing required parameters'));
     }
 
     try {
@@ -26,11 +28,12 @@ export class MintManager implements IMintManager {
         }
       );
 
-      const { signatures } = response.data;
-
-      return signatures as string[];
+      const { assetIds } = response.data;
+      return Result.ok(assetIds as string[]);
     } catch (error) {
-      throw error;
+      return Result.err(
+        new Error(`Minting failed: ${error instanceof Error ? error.message : String(error)}`)
+      );
     }
   }
 }

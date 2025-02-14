@@ -1,13 +1,14 @@
 import { Wallet } from '@project-serum/anchor';
-import { Connection, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { Connection, PublicKey, TransactionInstruction, AddressLookupTableAccount } from '@solana/web3.js';
 import { ICreditManager } from './types';
-import aithraToolkitLogger from './logger';
+import {aithraToolkitLogger} from './logger';
 import {
   createTransferInstruction,
   getAssociatedTokenAddressSync,
   getOrCreateAssociatedTokenAccount
 } from '@solana/spl-token';
 import { getTokenBalanceWeb3, signSendAndConfirmTransaction } from '../utils';
+import { Result } from '../result';
 
 interface CreditRequirement {
   requiredAmount: number;
@@ -41,170 +42,255 @@ export class CreditManager implements ICreditManager {
     this.priorityFee = priorityFee;
   }
 
-  async fetchBalance(): Promise<number> {
-    const balance = await getTokenBalanceWeb3(
-      this.connection,
-      this.AITHRA_MINT,
-      this.wallet.publicKey
-    );
-    return balance;
+  async fetchBalance(): Promise<Result<number, Error>> {
+    try {
+      const balance = await getTokenBalanceWeb3(
+        this.connection,
+        this.AITHRA_MINT,
+        this.wallet.publicKey
+      );
+      return Result.ok(balance);
+    } catch (err) {
+      return Result.err(new Error(`Failed to fetch balance: ${err.message}`));
+    }
   }
 
-  private async syncBalance(): Promise<void> {
-    this.balance = await this.fetchBalance();
+  private async syncBalance(): Promise<Result<void, Error>> {
+    const balanceResult = await this.fetchBalance();
+    if (balanceResult.isErr()) {
+      return Result.err(balanceResult.getErr()!);
+    }
+    this.balance = balanceResult.unwrap();
+    return Result.ok();
   }
 
-  private async getCost(): Promise<number> {
-    const response = await fetch(`${this.apiUrl}/payment-check`);
-    const { cost } = await response.json();
-    return Number(cost);
+  async getCost(): Promise<Result<number, Error>> {
+    try {
+      const response = await fetch(`${this.apiUrl}/payment-check`);
+      const { cost } = await response.json();
+      return Result.ok(Number(cost));
+    } catch (err) {
+      return Result.err(new Error(`Failed to get cost: ${err.message}`));
+    }
   }
 
-  private async getAithraPrice(): Promise<number> {
-    const tokenData = await (
-      await fetch(
-        `https://api.jup.ag/price/v2?ids=${this.AITHRA_MINT.toString()}&vsToken=So11111111111111111111111111111111111111112`
-      )
-    ).json();
-    return tokenData.data[this.AITHRA_MINT.toString()].price;
+  public async getAithraPriceInUsd(): Promise<Result<number, Error>> {
+    try {
+      const tokenData = await (
+        await fetch(
+          `https://api.jup.ag/price/v2?ids=${this.AITHRA_MINT.toString()}`
+        )
+      ).json();
+      return Result.ok(Number(tokenData.data[this.AITHRA_MINT.toString()].price));
+    } catch (err) {
+      return Result.err(new Error(`Failed to get USD price: ${err.message}`));
+    }
   }
 
-  async handleCredits(numberOfFiles: number): Promise<CreditRequirement> {
-    await this.syncBalance();
-    const costPerFile = await this.getCost();
+  private async getAithraPriceInSol(): Promise<Result<number, Error>> {
+    try {
+      const tokenData = await (
+        await fetch(
+          `https://api.jup.ag/price/v2?ids=${this.AITHRA_MINT.toString()}&vsToken=So11111111111111111111111111111111111111112`
+        )
+      ).json();
+      return Result.ok(tokenData.data[this.AITHRA_MINT.toString()].price);
+    } catch (err) {
+      return Result.err(new Error(`Failed to get SOL price: ${err.message}`));
+    }
+  }
+
+  async handleCredits(numberOfFiles: number): Promise<Result<CreditRequirement, Error>> {
+    const syncResult = await this.syncBalance();
+    if (syncResult.isErr()) return Result.err(syncResult.getErr()!);
+
+    const costResult = await this.getCost();
+    if (costResult.isErr()) return Result.err(costResult.getErr()!);
+
+    const costPerFile = costResult.unwrap();
     const totalCost = costPerFile * numberOfFiles;
-    const totalCostWithSlippage = totalCost + totalCost * 0.01;
+    const totalCostWithSlippage = totalCost + totalCost * 0.005;
 
     const currentBalance = this.balance / Math.pow(10, 9);
 
-    if (currentBalance >= totalCostWithSlippage) {
-      return {
-        requiredAmount: totalCostWithSlippage,
-        needsTokenPurchase: false,
-        amountToPurchase: 0
-      };
-    }
-
-    return {
+    return Result.ok({
       requiredAmount: totalCostWithSlippage,
-      needsTokenPurchase: true,
-      amountToPurchase: totalCostWithSlippage - currentBalance
-    };
-  }
-
-  private async swapSolForAithra(amountInSol: number): Promise<string> {
-    const lamports = Math.floor(amountInSol * Math.pow(10, 9));
-
-    const quoteResponse = await (
-      await fetch(
-        `https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${this.AITHRA_MINT.toString()}&amount=${lamports}&slippageBps=50`
-      )
-    ).json();
-
-    const instructions = await (
-      await fetch('https://quote-api.jup.ag/v6/swap-instructions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          quoteResponse,
-          userPublicKey: this.wallet.publicKey.toBase58()
-        })
-      })
-    ).json();
-
-    if (!instructions) {
-      throw new Error('Failed to get swap instructions');
-    }
-
-    const {
-      computeBudgetInstructions,
-      setupInstructions,
-      swapInstruction,
-      cleanupInstruction,
-      addressLookupTableAddresses
-    } = instructions;
-
-    const deserializeInstruction = (instruction) => {
-      return new TransactionInstruction({
-        programId: new PublicKey(instruction.programId),
-        keys: instruction.accounts.map((key) => ({
-          pubkey: new PublicKey(key.pubkey),
-          isSigner: key.isSigner,
-          isWritable: key.isWritable
-        })),
-        data: Buffer.from(instruction.data, 'base64')
-      });
-    };
-
-    const preparedInstructions = [
-      ...computeBudgetInstructions.map(deserializeInstruction),
-      ...setupInstructions.map(deserializeInstruction),
-      deserializeInstruction(swapInstruction),
-      ...(cleanupInstruction
-        ? [deserializeInstruction(cleanupInstruction)]
-        : [])
-    ];
-
-    return signSendAndConfirmTransaction({
-      connection: this.connection,
-      wallet: this.wallet,
-      instructions: preparedInstructions,
-      addressLookupTableAccounts: addressLookupTableAddresses,
-      priorityFee: this.priorityFee
+      needsTokenPurchase: currentBalance < totalCostWithSlippage,
+      amountToPurchase: Math.max(0, totalCostWithSlippage - currentBalance)
     });
   }
 
-  public async pay(amount: number): Promise<string> {
-    const fromTokenAccount = getAssociatedTokenAddressSync(
-      this.AITHRA_MINT,
-      this.wallet.publicKey
-    );
-
-    const toTokenAccount = getAssociatedTokenAddressSync(
-      this.AITHRA_MINT,
-      this.BURNER_WALLET
-    );
-
-    const transferInstruction = createTransferInstruction(
-      fromTokenAccount,
-      toTokenAccount,
-      this.wallet.publicKey,
-      amount * Math.pow(10, 9)
-    );
-
-    return signSendAndConfirmTransaction({
-      connection: this.connection,
-      wallet: this.wallet,
-      instructions: [transferInstruction],
-      priorityFee: this.priorityFee
-    });
-  }
-
-  async handlePayment(numberOfFiles: number): Promise<string> {
+  private async swapSolForAithra(amountInSol: number): Promise<Result<string, Error>> {
     try {
-      const creditReq = await this.handleCredits(numberOfFiles);
+      let lamports = Math.floor(amountInSol * Math.pow(10, 9));
 
-      if (creditReq.needsTokenPurchase) {
-        const aithraPrice = await this.getAithraPrice();
-        const solAmount = creditReq.amountToPurchase * aithraPrice;
+      // slippage + 1% 
+      lamports = Math.floor(lamports * 1.1);
 
-        const swapSignature = await this.swapSolForAithra(solAmount);
-        aithraToolkitLogger.success(
-          `Swapped SOL for AITHRA tokens. https://solscan.io/tx/${swapSignature}`
-        );
+      const quoteResponse = await (
+        await fetch(
+          `https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${this.AITHRA_MINT.toString()}&amount=${lamports}&slippageBps=50`
+        )
+      ).json();
 
-        await this.syncBalance();
+      const instructions = await (
+        await fetch('https://quote-api.jup.ag/v6/swap-instructions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quoteResponse,
+            userPublicKey: this.wallet.publicKey.toBase58()
+          })
+        })
+      ).json();
+
+      if (!instructions) {
+        throw new Error('Failed to get swap instructions');
       }
 
-      const paymentSignature = await this.pay(creditReq.requiredAmount);
-      aithraToolkitLogger.log(
-        `Payment sent. https://solscan.io/tx/${paymentSignature}`
+      const {
+        computeBudgetInstructions,
+        setupInstructions,
+        swapInstruction,
+        cleanupInstruction,
+        addressLookupTableAddresses
+      } = instructions;
+
+      const deserializeInstruction = (instruction) => {
+        return new TransactionInstruction({
+          programId: new PublicKey(instruction.programId),
+          keys: instruction.accounts.map((key) => ({
+            pubkey: new PublicKey(key.pubkey),
+            isSigner: key.isSigner,
+            isWritable: key.isWritable
+          })),
+          data: Buffer.from(instruction.data, 'base64')
+        });
+      };
+
+      const preparedInstructions = [
+        ...computeBudgetInstructions.map(deserializeInstruction),
+        ...setupInstructions.map(deserializeInstruction),
+        deserializeInstruction(swapInstruction),
+        ...(cleanupInstruction
+          ? [deserializeInstruction(cleanupInstruction)]
+          : [])
+      ];
+
+      const getAddressLookupTableAccounts = async (
+        keys: string[]
+      ): Promise<AddressLookupTableAccount[]> => {
+        if (!keys || keys.length === 0) return [];
+        
+        const addressLookupTableAccountInfos =
+          await this.connection.getMultipleAccountsInfo(
+            keys.map((key) => new PublicKey(key))
+          );
+
+        return addressLookupTableAccountInfos.reduce((acc, accountInfo, index) => {
+          const addressLookupTableAddress = keys[index];
+          if (accountInfo) {
+            const addressLookupTableAccount = new AddressLookupTableAccount({
+              key: new PublicKey(addressLookupTableAddress),
+              state: AddressLookupTableAccount.deserialize(accountInfo.data),
+            });
+            acc.push(addressLookupTableAccount);
+          }
+          return acc;
+        }, new Array<AddressLookupTableAccount>());
+      };
+
+      // Get address lookup table accounts
+      const addressLookupTableAccounts = await getAddressLookupTableAccounts(
+        addressLookupTableAddresses || []
       );
 
-      return paymentSignature;
+      const transactionResponse = await signSendAndConfirmTransaction({
+        connection: this.connection,
+        wallet: this.wallet,
+        instructions: preparedInstructions,
+        addressLookupTableAccounts, // Use the properly formatted accounts
+        priorityFee: this.priorityFee
+      });
+      
+      if (transactionResponse.isErr()) {
+        return Result.err(transactionResponse.getErr());
+      }
+
+      return Result.ok(transactionResponse.unwrap());
     } catch (err) {
-      aithraToolkitLogger.error(`Error buying credits: ${err}`);
-      throw err;
+      return Result.err(new Error(`Swap failed: ${err.message}`));
     }
+  }
+
+  public async pay(amount: number): Promise<Result<string, Error>> {
+    try {
+      const fromTokenAccount = getAssociatedTokenAddressSync(
+        this.AITHRA_MINT,
+        this.wallet.publicKey
+      );
+
+      const toTokenAccount = getAssociatedTokenAddressSync(
+        this.AITHRA_MINT,
+        this.BURNER_WALLET
+      );
+
+      const transferInstruction = createTransferInstruction(
+        fromTokenAccount,
+        toTokenAccount,
+        this.wallet.publicKey,
+        Math.floor(amount * Math.pow(10, 9))
+      );
+
+      const transactionResponse = await signSendAndConfirmTransaction({
+        connection: this.connection,
+        wallet: this.wallet,
+        instructions: [transferInstruction],
+        priorityFee: this.priorityFee
+      });
+
+      if (transactionResponse.isErr()) {
+        return Result.err(transactionResponse.getErr());
+      }
+
+      return Result.ok(transactionResponse.unwrap());
+    } catch (err) {
+      return Result.err(new Error(`Payment failed: ${err.message}`));
+    }
+  }
+
+  async handlePayment(numberOfFiles: number): Promise<Result<string, Error>> {
+    const creditReqResult = await this.handleCredits(numberOfFiles);
+    if (creditReqResult.isErr()) return Result.err(creditReqResult.getErr()!);
+
+    const creditReq = creditReqResult.unwrap();
+
+    if (creditReq.needsTokenPurchase) {
+      const priceResult = await this.getAithraPriceInSol();
+      if (priceResult.isErr()) return Result.err(priceResult.getErr()!);
+
+      const aithraPrice = priceResult.unwrap();
+      const solAmount = creditReq.amountToPurchase * aithraPrice;
+
+      const swapResult = await this.swapSolForAithra(solAmount);
+      if (swapResult.isErr()) return Result.err(swapResult.getErr()!);
+
+      aithraToolkitLogger.success(
+        `Swapped SOL for AITHRA tokens. https://solscan.io/tx/${swapResult.unwrap()}`
+      );
+
+      const syncResult = await this.syncBalance();
+      if (syncResult.isErr()) return Result.err(syncResult.getErr()!);
+    }
+
+    const paymentResult = await this.pay(creditReq.requiredAmount);
+    if (paymentResult.isErr()) return Result.err(paymentResult.getErr()!);
+
+    const signature = paymentResult.unwrap();
+    aithraToolkitLogger.log(
+      `Payment sent. https://solscan.io/tx/${signature}`
+    );
+
+    return Result.ok(signature);
   }
 }

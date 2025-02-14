@@ -1,3 +1,5 @@
+import { Result } from "../result";
+
 /**
  * Represents a data stream with metadata and manifest information
  */
@@ -128,7 +130,7 @@ export interface IManifestBuilder {
     type: T,
     files: UploadedFile[],
     config: ManifestConfigMap[T]
-  ): Promise<BaseManifest>;
+  ): Promise<Result<BaseManifest, Error>>;
 }
 
 /**
@@ -153,7 +155,7 @@ export interface Logger {
  * Handles payment processing for file operations
  */
 export interface ICreditManager {
-  handlePayment(numberOfFiles: number): Promise<string>;
+  handlePayment(numberOfFiles: number): Promise<Result<string, Error>>;
 }
 
 /**
@@ -190,16 +192,16 @@ export interface IpnsResponse {
  * Interface for managing file storage operations
  */
 export interface IStorageManager {
-  upload(params: IStorageManagerParams): Promise<UploadedFile[]>;
-  pinToIpns(cid: string, address: string): Promise<IpnsResponse>;
+  upload(params: IStorageManagerParams): Promise<Result<UploadedFile[], Error>>;
+  pinToIpns(cid: string, address: string): Promise<Result<IpnsResponse, Error>>;
 }
 
 /**
  * Interface for encryption and decryption operations
  */
 export interface IMarshalManager {
-  encrypt(params: IEncryptParams): Promise<IEncryptResponse>;
-  decrypt(params: IMarshalDecryptParams): Promise<IMarshalDecryptResponse>;
+  encrypt(params: IEncryptParams): Promise<Result<IEncryptResponse, Error>>;
+  decrypt(params: IMarshalDecryptParams): Promise<Result<IMarshalDecryptResponse, Error>>;
 }
 
 /**
@@ -310,14 +312,16 @@ export interface MusicNFTConfig extends NFTConfigBase {
   previewMusicUrl?: string;
   /** Optional rarity level */
   rarity?: string;
+  /** Optional sub-type */
 }
 
 /** Generic builder interface for creating NFT metadata */
-export interface INFTMetadataBuilder<T extends NFTType> {
+export interface INFTMetadataBuilder<
+  TConfig extends NFTConfigBase,
+  TMetadata extends NFTMetadataBase
+> {
   /** Builds metadata for a specific NFT type based on provided configuration */
-  buildMetadata(
-    config: T extends typeof NFTTypes.Music ? MusicNFTConfig : never
-  ): T extends typeof NFTTypes.Music ? MusicNFTMetadata : never;
+  buildMetadata(config: TConfig): Result<TMetadata, Error>;
 }
 /**
  * Configuration for minting NFTs
@@ -356,7 +360,7 @@ export interface MintManagerParams {
  * Interface for managing NFT minting operations
  */
 export interface IMintManager {
-  mint(params: MintManagerParams): Promise<string[]>;
+  mint(params: MintManagerParams): Promise<Result<string[], Error>>;
 }
 
 export type TrackInfo = Array<{

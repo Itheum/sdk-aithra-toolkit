@@ -5,6 +5,7 @@ import {
   IEncryptResponse,
   IMarshalManager
 } from './types';
+import { Result } from '../result';
 import axios from 'axios';
 
 export class MarshalManager implements IMarshalManager {
@@ -14,9 +15,9 @@ export class MarshalManager implements IMarshalManager {
     this.apiBaseUrl = apiBaseUrl;
   }
 
-  async encrypt(params: IEncryptParams): Promise<IEncryptResponse> {
+  async encrypt(params: IEncryptParams): Promise<Result<IEncryptResponse, Error>> {
     if (!params.dataNFTStreamUrl) {
-      throw new Error('dataNFTStreamUrl is required for generation');
+      return Result.err(new Error('dataNFTStreamUrl is required for generation'));
     }
 
     try {
@@ -31,17 +32,19 @@ export class MarshalManager implements IMarshalManager {
         }
       );
 
-      return response.data;
-    } catch (error) {
-      throw error;
+      return Result.ok(response.data);
+    } catch (err) {
+      return Result.err(
+        new Error(`Encryption failed: ${err instanceof Error ? err.message : String(err)}`)
+      );
     }
   }
 
   async decrypt(
     params: IMarshalDecryptParams
-  ): Promise<IMarshalDecryptResponse> {
+  ): Promise<Result<IMarshalDecryptResponse, Error>> {
     if (!params.encryptedMessage) {
-      throw new Error('encryptedMessage is required for decryption');
+      return Result.err(new Error('encryptedMessage is required for decryption'));
     }
 
     try {
@@ -56,9 +59,11 @@ export class MarshalManager implements IMarshalManager {
         }
       );
 
-      return response.data;
-    } catch (error) {
-      throw error;
+      return Result.ok(response.data);
+    } catch (err) {
+      return Result.err(
+        new Error(`Decryption failed: ${err instanceof Error ? err.message : String(err)}`)
+      );
     }
   }
 }
