@@ -18,15 +18,27 @@ jobs:
         with:
           node-version: '23.3.0'
           registry-url: https://registry.npmjs.org/
+      
+      # Install dependencies with pnpm
+      - uses: pnpm/action-setup@v2
+        with:
+          version: latest
+      
       - name: Install dependencies
-        run: npx ci
+        run: pnpm install --frozen-lockfile
+      
+      # Build the project
+      - name: Build
+        run: pnpm build
+      
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_TAG=v$(node -p "require('./package.json').version")
           gh release create $RELEASE_TAG --target=$GITHUB_SHA --title="$RELEASE_TAG" --generate-notes
-      - name: Publish to npmjs
+      
+      - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
-        run: npm publish --access=public
+        run: pnpm publish --access=public --no-git-checks
