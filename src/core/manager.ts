@@ -50,6 +50,8 @@ interface ConstructorParams {
 export interface BuildMusicNFTResult {
   success: boolean;
   assetIds: string[];
+  animationUrl: string;
+  trackUrl: string;
 }
 
 export class AithraManager {
@@ -198,6 +200,8 @@ export class AithraManager {
     }
     const animationUrl = animationResult.unwrap();
 
+    const trackUrl = `https://gateway.lighthouse.storage/ipfs/${uploadResult.unwrap()[0].hash}`;
+
     // 6. Generate and upload NFT metadata
     const nftConfig: MusicNFTConfig = {
       animationUrl,
@@ -205,7 +209,7 @@ export class AithraManager {
       itheumDataStreamUrl: `https://gateway.lighthouse.storage/ipfs/${ipnsResult.unwrap().pointingHash}?dmf-nestedstream=1`,
       imageUrl: animationUrl,
       name: params.nft.name,
-      previewMusicUrl: `https://gateway.lighthouse.storage/ipfs/${uploadResult.unwrap()[0].hash}`,
+      previewMusicUrl: trackUrl,
       description: params.nft.description,
       tokenCode: params.tokenCode
     };
@@ -282,7 +286,9 @@ export class AithraManager {
 
     return Result.ok({
       success: true,
-      assetIds: mintResult.unwrap()
+      assetIds: mintResult.unwrap(),
+      animationUrl: animationUrl,
+      trackUrl: trackUrl
     });
   }
 
