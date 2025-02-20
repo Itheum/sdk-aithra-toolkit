@@ -85,32 +85,46 @@ export class AithraManager {
   }
 
   async getTotalCost(numberOfSongs: number, numberOfMints: number): Promise<Result<number, Error>> {
-    const generateSongPrice = 0.035;
+    // const generateSongPrice = 0.035;
     
-    const priceResult = await this.mintsCreditManager.getAithraPriceInUsd();
-    if (priceResult.isErr()) {
-      return Result.err(priceResult.getErr());
-    }
-    const aithraUsdPrice = priceResult.unwrap() || 0.001;
+    // const priceResult = await this.mintsCreditManager.getAithraPriceInUsd();
+    // if (priceResult.isErr()) {
+    //   return Result.err(priceResult.getErr());
+    // }
+    // const aithraUsdPrice = priceResult.unwrap() || 0.001;
     
-    const generateSongPriceAithra = generateSongPrice / aithraUsdPrice;
+    // const generateSongPriceAithra = generateSongPrice / aithraUsdPrice;
     
-    const fileCostResult = await this.filesCreditManager.getCost();
-    if (fileCostResult.isErr()) {
-      return Result.err(fileCostResult.getErr());
-    }
+    // const fileCostResult = await this.filesCreditManager.getCost();
+    // if (fileCostResult.isErr()) {
+    //   return Result.err(fileCostResult.getErr());
+    // }
     
-    const mintCostResult = await this.mintsCreditManager.getCost();
-    if (mintCostResult.isErr()) {
-      return Result.err(mintCostResult.getErr());
-    }
+    // const mintCostResult = await this.mintsCreditManager.getCost();
+    // if (mintCostResult.isErr()) {
+    //   return Result.err(mintCostResult.getErr());
+    // }
 
-    const totalCost = (numberOfSongs * fileCostResult.unwrap() + 2 * fileCostResult.unwrap()) + 
-                     (numberOfMints * mintCostResult.unwrap()) + 
-                     (numberOfSongs * generateSongPriceAithra);
+    // const totalCost = (numberOfSongs * fileCostResult.unwrap() + 2 * fileCostResult.unwrap()) + 
+    //                  (numberOfMints * mintCostResult.unwrap()) + 
+    //                  (numberOfSongs * generateSongPriceAithra);
 
-    return Result.ok(totalCost);
+    const GENERATE_MUSIC_MEME_PRICE_IN_USD = 0.3;
+    try {
+      const response = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
+      const data = await response.json();
+      const currentSolPrice = data.solana.usd;
+
+      const solAmount = GENERATE_MUSIC_MEME_PRICE_IN_USD / currentSolPrice;
+    
+      return Result.ok(Number(solAmount.toFixed(4)))
+ 
+    } catch (error) {
+      console.error("Failed to fetch SOL price:", error);
+       Result.err(new Error(error));
+    }
   }
+
 
   async buildUploadMintMusicNFTs(params: BuildUploadMintMusicNFTsParams): Promise<Result<BuildMusicNFTResult, Error>> {
     // 1. Build playlist config
