@@ -62,7 +62,7 @@ export class AithraManager {
   private marshalManager: MarshalManager;
   private mintManager: MintManager;
   private apiUrl = 'https://api.itheumcloud.com/zsuiteapi';
-  private marshalUrl = 'https://api.itheumcloud-stg.com/datamarshalapi/router/v1';
+  private marshalUrl = 'https://api.itheumcloud.com/datamarshalapi/router/v1';
   private mintUrl = 'https://api.itheumcloud.com/itheumapi';
 
   constructor({ connection, keypair, priorityFee = 0 }: ConstructorParams) {
