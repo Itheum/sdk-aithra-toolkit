@@ -26,7 +26,7 @@ interface BuildUploadMintMusicNFTsParams {
     name: string;
     creator: string;
   };
-  tokenCode: string;
+  tokenCode?: string;
   nft: {
     tokenName: string;
     sellerFeeBasisPoints: number;

@@ -74,7 +74,7 @@ export class MusicNFTMetadataBuilder
             { type: 'audio/mpeg', uri: config.previewMusicUrl }
           ]
         },
-        symbol: config.tokenCode
+        symbol: ""
       };
 
       return Result.ok(metadata);
