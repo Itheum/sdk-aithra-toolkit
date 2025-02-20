@@ -52,6 +52,7 @@ export interface BuildMusicNFTResult {
   assetIds: string[];
   animationUrl: string;
   trackUrl: string;
+  trackImageUrl: string;
 }
 
 export class AithraManager {
@@ -215,6 +216,7 @@ export class AithraManager {
     const animationUrl = animationResult.unwrap();
 
     const trackUrl = `https://gateway.lighthouse.storage/ipfs/${uploadResult.unwrap()[0].hash}`;
+    const trackImageUrl = `https://gateway.lighthouse.storage/ipfs/${uploadResult.unwrap()[1].hash}`;
 
     // 6. Generate and upload NFT metadata
     const nftConfig: MusicNFTConfig = {
@@ -302,7 +304,8 @@ export class AithraManager {
       success: true,
       assetIds: mintResult.unwrap(),
       animationUrl: animationUrl,
-      trackUrl: trackUrl
+      trackUrl: trackUrl,
+      trackImageUrl:trackImageUrl
     });
   }
 
