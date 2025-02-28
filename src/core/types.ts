@@ -280,7 +280,7 @@ export interface MusicNFTMetadata extends NFTMetadataBase {
     /** Fixed category for music NFTs */
     category: 'audio';
     /** Array of music-specific file types */
-    files: Array<{ type: 'image/gif' | 'audio/mpeg'; uri: string }>;
+    files: Array<{ type: 'image/png' | 'audio/mpeg'; uri: string }>;
   };
 }
 

@@ -1,6 +1,6 @@
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { Wallet } from '@project-serum/anchor';
-import { aithraToolkitLogger as logger } from './logger';
+import { aithraToolkitLogger, aithraToolkitLogger as logger } from './logger';
 import {
   MintConfig,
   MusicNFTConfig,
@@ -38,7 +38,7 @@ interface BuildUploadMintMusicNFTsParams {
     animationUrl?: string;
     animationFile?: string;
   };
-  creator?:string;
+  creator?: string;
 }
 
 interface ConstructorParams {
@@ -87,20 +87,20 @@ export class AithraManager {
 
   async getTotalCost(numberOfSongs: number, numberOfMints: number): Promise<Result<number, Error>> {
     // const generateSongPrice = 0.035;
-    
+
     // const priceResult = await this.mintsCreditManager.getAithraPriceInUsd();
     // if (priceResult.isErr()) {
     //   return Result.err(priceResult.getErr());
     // }
     // const aithraUsdPrice = priceResult.unwrap() || 0.001;
-    
+
     // const generateSongPriceAithra = generateSongPrice / aithraUsdPrice;
-    
+
     // const fileCostResult = await this.filesCreditManager.getCost();
     // if (fileCostResult.isErr()) {
     //   return Result.err(fileCostResult.getErr());
     // }
-    
+
     // const mintCostResult = await this.mintsCreditManager.getCost();
     // if (mintCostResult.isErr()) {
     //   return Result.err(mintCostResult.getErr());
@@ -117,18 +117,18 @@ export class AithraManager {
       const currentSolPrice = data.solana.usd;
 
       const solAmount = GENERATE_MUSIC_MEME_PRICE_IN_USD / currentSolPrice;
-    
+
       return Result.ok(Number(solAmount.toFixed(4)))
- 
+
     } catch (error) {
       console.error("Failed to fetch SOL price:", error);
-       Result.err(new Error(error));
+      Result.err(new Error(error));
     }
   }
 
 
   async buildUploadMintMusicNFTs(params: BuildUploadMintMusicNFTsParams): Promise<Result<BuildMusicNFTResult, Error>> {
-    // 1. Build playlist config
+    aithraToolkitLogger.debug('Entering buildUploadMintMusicNFTs');
     const playlistResult = await buildPlaylistConfig(
       params.folderPath,
       params.playlist.name,
@@ -160,11 +160,13 @@ export class AithraManager {
     logger.info('Files uploaded successfully');
 
     // 3. Build and upload manifest
+    aithraToolkitLogger.debug('Getting the Manifest Builder');
     const builderResult = ManifestBuilderFactory.getBuilder(ManifestType.MusicPlaylist);
     if (builderResult.isErr()) {
       return Result.err(builderResult.getErr());
     }
 
+    aithraToolkitLogger.debug('Building the manifest file');
     const manifestResult = await builderResult.unwrap().buildManifest(
       ManifestType.MusicPlaylist,
       uploadResult.unwrap(),
@@ -240,12 +242,14 @@ export class AithraManager {
     logger.info('Encrypted data stream URL successfully');
 
     nftConfig.itheumDataStreamUrl = encryptResult.unwrap().encryptedMessage;
-    
+
+    aithraToolkitLogger.debug('Getting the Nft Metadata Builder');
     const builderNftResult = NFTMetadataBuilderFactory.getBuilder(NFTTypes.Music);
     if (builderNftResult.isErr()) {
       return Result.err(builderNftResult.getErr());
     }
 
+    aithraToolkitLogger.debug('Building the NFT metadata');
     const metadataResult = builderNftResult.unwrap().buildMetadata(nftConfig);
     if (metadataResult.isErr()) {
       return Result.err(metadataResult.getErr());
@@ -300,16 +304,18 @@ export class AithraManager {
       `NFTs minted: ${mintResult.unwrap().length} with assetIds: ${mintResult.unwrap().join(', ')}`
     );
 
+    aithraToolkitLogger.debug('Exiting buildUploadMintMusicNFTs');
     return Result.ok({
       success: true,
       assetIds: mintResult.unwrap(),
       animationUrl: animationUrl,
       trackUrl: trackUrl,
-      trackImageUrl:trackImageUrl
+      trackImageUrl: trackImageUrl
     });
   }
 
   private async handleAnimation(animation: { animationUrl?: string; animationFile?: string }): Promise<Result<string, Error>> {
+    aithraToolkitLogger.debug('Entering handleAnimation');
     if (animation.animationUrl) {
       return Result.ok(animation.animationUrl);
     }
@@ -338,6 +344,7 @@ export class AithraManager {
       return Result.err(uploadResult.getErr());
     }
 
+    aithraToolkitLogger.debug('Exiting handleAnimation');
     logger.info('Animation file uploaded successfully');
     return Result.ok(`https://gateway.lighthouse.storage/ipfs/${uploadResult.unwrap()[0].hash}`);
   }

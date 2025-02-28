@@ -1,4 +1,5 @@
 import { Result } from '../result';
+import { aithraToolkitLogger } from './logger';
 import {
   BaseManifest,
   IManifestBuilder,
@@ -25,6 +26,7 @@ export class MusicPlaylistBuilder implements IManifestBuilder {
     uploadedFiles: UploadedFile[],
     config: MusicPlaylistConfig
   ): Promise<Result<MusicPlaylistManifest, Error>> {
+    aithraToolkitLogger.debug('Entering buildManifest');
     try {
       const now = new Date().toISOString();
       const date = now.split('T')[0];
@@ -80,7 +82,7 @@ export class MusicPlaylistBuilder implements IManifestBuilder {
           title: metadata.title
         });
       }
-
+      aithraToolkitLogger.debug('Exiting buildManifest');
       return Result.ok(manifest);
     } catch (err) {
       return Result.err(

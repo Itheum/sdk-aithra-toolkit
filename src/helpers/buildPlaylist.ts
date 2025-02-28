@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { Result } from '../result';
 import { TrackInfo } from '../core/types';
+import { aithraToolkitLogger } from '../core/logger';
 
 interface PlaylistBuildResult {
   config: {
@@ -27,7 +28,9 @@ export async function buildPlaylistConfig(
   name: string,
   creator: string
 ): Promise<Result<PlaylistBuildResult, Error>> {
+  aithraToolkitLogger.debug('Entering buildPlaylistConfig');
   try {
+
     // Normalize folder path
     const basePath = resolve(folderPath);
 
@@ -125,7 +128,7 @@ export async function buildPlaylistConfig(
         coverArtFileName: imageFile
       };
     }
-
+    aithraToolkitLogger.debug('Exiting buildPlaylistConfig');
     return Result.ok({
       config,
       audioFiles,

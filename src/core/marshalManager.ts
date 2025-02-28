@@ -7,6 +7,7 @@ import {
 } from './types';
 import { Result } from '../result';
 import axios from 'axios';
+import { aithraToolkitLogger } from './logger';
 
 export class MarshalManager implements IMarshalManager {
   private readonly apiBaseUrl: string;
@@ -16,6 +17,7 @@ export class MarshalManager implements IMarshalManager {
   }
 
   async encrypt(params: IEncryptParams): Promise<Result<IEncryptResponse, Error>> {
+    aithraToolkitLogger.debug('Entering encrypt');
     if (!params.dataNFTStreamUrl) {
       return Result.err(new Error('dataNFTStreamUrl is required for generation'));
     }
@@ -32,6 +34,7 @@ export class MarshalManager implements IMarshalManager {
         }
       );
 
+      aithraToolkitLogger.debug('Exiting encrypt');
       return Result.ok(response.data);
     } catch (err) {
       return Result.err(
@@ -43,6 +46,7 @@ export class MarshalManager implements IMarshalManager {
   async decrypt(
     params: IMarshalDecryptParams
   ): Promise<Result<IMarshalDecryptResponse, Error>> {
+    aithraToolkitLogger.debug('Entering decrypt');
     if (!params.encryptedMessage) {
       return Result.err(new Error('encryptedMessage is required for decryption'));
     }
@@ -58,7 +62,7 @@ export class MarshalManager implements IMarshalManager {
           }
         }
       );
-
+      aithraToolkitLogger.debug('Exiting decrypt');
       return Result.ok(response.data);
     } catch (err) {
       return Result.err(

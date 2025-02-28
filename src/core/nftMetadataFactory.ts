@@ -70,7 +70,7 @@ export class MusicNFTMetadataBuilder
         properties: {
           category: 'audio',
           files: [
-            { type: 'image/gif', uri: config.imageUrl },
+            { type: 'image/png', uri: config.imageUrl },
             { type: 'audio/mpeg', uri: config.previewMusicUrl }
           ]
         },

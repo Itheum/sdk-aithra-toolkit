@@ -1,7 +1,7 @@
 import { Wallet } from '@project-serum/anchor';
 import { Connection, PublicKey, TransactionInstruction, AddressLookupTableAccount } from '@solana/web3.js';
 import { ICreditManager } from './types';
-import {aithraToolkitLogger} from './logger';
+import { aithraToolkitLogger } from './logger';
 import {
   createTransferInstruction,
   getAssociatedTokenAddressSync,
@@ -43,12 +43,14 @@ export class CreditManager implements ICreditManager {
   }
 
   async fetchBalance(): Promise<Result<number, Error>> {
+    aithraToolkitLogger.debug('Entering fetchBalance');
     try {
       const balance = await getTokenBalanceWeb3(
         this.connection,
         this.AITHRA_MINT,
         this.wallet.publicKey
       );
+      aithraToolkitLogger.debug('Exiting fetchBalance');
       return Result.ok(balance);
     } catch (err) {
       return Result.err(new Error(`Failed to fetch balance: ${err.message}`));
@@ -56,18 +58,22 @@ export class CreditManager implements ICreditManager {
   }
 
   private async syncBalance(): Promise<Result<void, Error>> {
+    aithraToolkitLogger.debug('Entering syncBalance');
     const balanceResult = await this.fetchBalance();
     if (balanceResult.isErr()) {
       return Result.err(balanceResult.getErr()!);
     }
     this.balance = balanceResult.unwrap();
+    aithraToolkitLogger.debug('Exiting syncBalance');
     return Result.ok();
   }
 
   async getCost(): Promise<Result<number, Error>> {
+    aithraToolkitLogger.debug('Entering getCost');
     try {
       const response = await fetch(`${this.apiUrl}/payment-check`);
       const { cost } = await response.json();
+      aithraToolkitLogger.debug('Exiting getCost');
       return Result.ok(Number(cost));
     } catch (err) {
       return Result.err(new Error(`Failed to get cost: ${err.message}`));
@@ -75,12 +81,14 @@ export class CreditManager implements ICreditManager {
   }
 
   public async getAithraPriceInUsd(): Promise<Result<number, Error>> {
+    aithraToolkitLogger.debug('Entering getAithraPriceInUsd');
     try {
       const tokenData = await (
         await fetch(
           `https://api.jup.ag/price/v2?ids=${this.AITHRA_MINT.toString()}`
         )
       ).json();
+      aithraToolkitLogger.debug('Exiting getAithraPriceInUsd');
       return Result.ok(Number(tokenData.data[this.AITHRA_MINT.toString()].price));
     } catch (err) {
       return Result.err(new Error(`Failed to get USD price: ${err.message}`));
@@ -88,12 +96,14 @@ export class CreditManager implements ICreditManager {
   }
 
   private async getAithraPriceInSol(): Promise<Result<number, Error>> {
+    aithraToolkitLogger.debug('Entering getAithraPriceInSol');
     try {
       const tokenData = await (
         await fetch(
           `https://api.jup.ag/price/v2?ids=${this.AITHRA_MINT.toString()}&vsToken=So11111111111111111111111111111111111111112`
         )
       ).json();
+      aithraToolkitLogger.debug('Exiting getAithraPriceInSol');
       return Result.ok(tokenData.data[this.AITHRA_MINT.toString()].price);
     } catch (err) {
       return Result.err(new Error(`Failed to get SOL price: ${err.message}`));
@@ -101,6 +111,7 @@ export class CreditManager implements ICreditManager {
   }
 
   async handleCredits(numberOfFiles: number): Promise<Result<CreditRequirement, Error>> {
+    aithraToolkitLogger.debug('Entering handleCredits');
     const syncResult = await this.syncBalance();
     if (syncResult.isErr()) return Result.err(syncResult.getErr()!);
 
@@ -113,6 +124,7 @@ export class CreditManager implements ICreditManager {
 
     const currentBalance = this.balance / Math.pow(10, 9);
 
+    aithraToolkitLogger.debug('Exiting handleCredits');
     return Result.ok({
       requiredAmount: totalCostWithSlippage,
       needsTokenPurchase: currentBalance < totalCostWithSlippage,
@@ -121,6 +133,7 @@ export class CreditManager implements ICreditManager {
   }
 
   private async swapSolForAithra(amountInSol: number): Promise<Result<string, Error>> {
+    aithraToolkitLogger.debug('Entering swapSolForAithra');
     try {
       let lamports = Math.floor(amountInSol * Math.pow(10, 9));
 
@@ -181,7 +194,7 @@ export class CreditManager implements ICreditManager {
         keys: string[]
       ): Promise<AddressLookupTableAccount[]> => {
         if (!keys || keys.length === 0) return [];
-        
+
         const addressLookupTableAccountInfos =
           await this.connection.getMultipleAccountsInfo(
             keys.map((key) => new PublicKey(key))
@@ -212,11 +225,12 @@ export class CreditManager implements ICreditManager {
         addressLookupTableAccounts, // Use the properly formatted accounts
         priorityFee: this.priorityFee
       });
-      
+
       if (transactionResponse.isErr()) {
         return Result.err(transactionResponse.getErr());
       }
 
+      aithraToolkitLogger.debug('Exiting swapSolForAithra');
       return Result.ok(transactionResponse.unwrap());
     } catch (err) {
       return Result.err(new Error(`Swap failed: ${err.message}`));
@@ -224,6 +238,7 @@ export class CreditManager implements ICreditManager {
   }
 
   public async pay(amount: number): Promise<Result<string, Error>> {
+    aithraToolkitLogger.debug('Entering pay');
     try {
       const fromTokenAccount = getAssociatedTokenAddressSync(
         this.AITHRA_MINT,
@@ -253,6 +268,7 @@ export class CreditManager implements ICreditManager {
         return Result.err(transactionResponse.getErr());
       }
 
+      aithraToolkitLogger.debug('Exiting pay');
       return Result.ok(transactionResponse.unwrap());
     } catch (err) {
       return Result.err(new Error(`Payment failed: ${err.message}`));
@@ -260,6 +276,7 @@ export class CreditManager implements ICreditManager {
   }
 
   async handlePayment(numberOfFiles: number): Promise<Result<string, Error>> {
+    aithraToolkitLogger.debug('Entering handlePayment');
     const creditReqResult = await this.handleCredits(numberOfFiles);
     if (creditReqResult.isErr()) return Result.err(creditReqResult.getErr()!);
 
@@ -290,7 +307,7 @@ export class CreditManager implements ICreditManager {
     aithraToolkitLogger.log(
       `Payment sent. https://solscan.io/tx/${signature}`
     );
-
+    aithraToolkitLogger.debug('Exiting handlePayment');
     return Result.ok(signature);
   }
 }

@@ -8,6 +8,7 @@ import {
 } from './types';
 import { Result } from '../result';
 import fs from 'fs';
+import { aithraToolkitLogger } from './logger';
 
 export class StorageManager implements IStorageManager {
   private readonly apiBaseUrl: string;
@@ -22,6 +23,7 @@ export class StorageManager implements IStorageManager {
    * @returns Promise of uploaded files
    */
   async upload(params: IStorageManagerParams): Promise<Result<UploadedFile[], Error>> {
+    aithraToolkitLogger.debug('Entering upload');
     try {
       // 1. Normalize and validate files
       const files = Array.isArray(params.files) ? params.files : [params.files];
@@ -61,7 +63,7 @@ export class StorageManager implements IStorageManager {
           }
         }
       );
-
+      aithraToolkitLogger.debug('Exiting upload');
       return Result.ok(response.data);
     } catch (err) {
       return Result.err(new Error(`Upload failed: ${err.message}`));
@@ -69,7 +71,7 @@ export class StorageManager implements IStorageManager {
   }
 
   async pinToIpns(cid: string, address: string): Promise<Result<IpnsResponse, Error>> {
-    // Validate inputs
+    aithraToolkitLogger.debug('Entering pinToIpns');
     if (!cid) {
       return Result.err(new Error('CID is required for IPNS pinning'));
     }
@@ -89,7 +91,7 @@ export class StorageManager implements IStorageManager {
           }
         }
       );
-
+      aithraToolkitLogger.debug('Exiting pinToIpns');
       return Result.ok(response.data);
     } catch (err) {
       return Result.err(new Error(`IPNS pinning failed: ${err.message}`));

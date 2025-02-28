@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Result } from '../result';
 import { MintConfig, MintManagerParams, IMintManager } from './types';
+import { aithraToolkitLogger } from './logger';
 
 export class MintManager implements IMintManager {
   private readonly apiBaseUrl: string;
@@ -10,7 +11,7 @@ export class MintManager implements IMintManager {
   }
 
   async mint(params: MintManagerParams): Promise<Result<string[], Error>> {
-    // Validate input parameters
+    aithraToolkitLogger.debug('Entering mint');
     if (!params.config || !params.address || !params.paymentHash) {
       return Result.err(new Error('Missing required parameters'));
     }
@@ -28,6 +29,7 @@ export class MintManager implements IMintManager {
         }
       );
 
+      aithraToolkitLogger.debug('Exiting mint');
       const { assetIds } = response.data;
       return Result.ok(assetIds as string[]);
     } catch (error) {
