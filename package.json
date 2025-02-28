@@ -1,6 +1,6 @@
 {
   "name": "@aithranetwork/sdk-aithra-toolkit",
-  "version": "0.0.7-alpha.7",
+  "version": "0.0.7-alpha.8",
   "description": "The Aithra Network Toolkit SDK for the agents",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
