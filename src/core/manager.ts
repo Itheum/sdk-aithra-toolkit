@@ -39,6 +39,7 @@ interface BuildUploadMintMusicNFTsParams {
     animationFile?: string;
   };
   creator?: string;
+  referenceTrackCreator?: string
 }
 
 interface ConstructorParams {
@@ -272,16 +273,23 @@ export class AithraManager {
     logger.info('NFT metadata uploaded successfully');
 
 
+    let creators = params.referenceTrackCreator ? [
+      { address: params.creator ?? this.wallet.publicKey.toString(), share: 33 },
+      { address: params.referenceTrackCreator, share: 34 },
+      { address: '4yWRkNB23Ee9oRw2h9SAH5nEKQndVM6y2bKDwB1zoAR1', share: 33 }
+    ] : [
+      { address: params.creator ?? this.wallet.publicKey.toString(), share: 50 },
+      { address: '4yWRkNB23Ee9oRw2h9SAH5nEKQndVM6y2bKDwB1zoAR1', share: 50 }
+    ]
+
+
     // 7. Handle minting
     const mintConfig: MintConfig = {
       mintForSolAddr: params.creator ?? this.wallet.publicKey.toString(),
       tokenName: params.nft.tokenName,
       metadataOnIpfsUrl: `https://gateway.lighthouse.storage/ipfs/${uploadedMetadata.unwrap()[0].hash}`,
       sellerFeeBasisPoints: params.nft.sellerFeeBasisPoints,
-      creators: [
-        { address: params.creator ?? this.wallet.publicKey.toString(), share: 50 },
-        { address: '4yWRkNB23Ee9oRw2h9SAH5nEKQndVM6y2bKDwB1zoAR1', share: 50 }
-      ],
+      creators,
       quantity: params.nft.quantity
     };
 
